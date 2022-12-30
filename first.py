@@ -21,6 +21,7 @@ def open_file(way):
 
 def select(file,name):
     return file.select(name)
+    print("hello_world")
 
 def main():
     ways = {"mod14" : "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD14.hdf",
