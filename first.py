@@ -7,7 +7,6 @@ from osgeo import gdal_array
 from osgeo import gdalconst
 import h5py
 import numpy as np
-
 #arr = np.random.rand(10000)
 
 def get_rastr(way):
@@ -20,10 +19,7 @@ def open_file(way):
     return SD(way,SDC.WRITE|SDC.CREATE|SDC.READ)
 
 def select(file,name):
-    return file.select(name)
-    print("hello_world")
-    print("gey")
-
+    return
 def main():
     ways = {"mod14" : "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD14.hdf",
     "mod3" : "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD03.hdf" ,
