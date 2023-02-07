@@ -14,6 +14,7 @@ hdf_03 = SD(filename_03, SDC.READ)
 hdf_14 = SD(filename_14, SDC.READ)
 #otkrivayut fayli, format pyhdf
 
+
 FP_row = hdf_14.select('FP_line')
 FP_col = hdf_14.select('FP_sample')
 #poluchayut stroki po imeni
