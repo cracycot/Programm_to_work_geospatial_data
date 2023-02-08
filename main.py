@@ -18,14 +18,16 @@ from shapely.geometry import Point
 def get_lat_lon(way):
     return [SD(way).select('Latitude')[:],SD(way).select('Longitude')[:]]
 
-def get_pixel_coordinates(x, y,way):
+def get_pixel_coordinates(y, x,way):
     latLon=get_lat_lon(way)
-    lat=latLon[0][x//5][y//5]
-    lon=latLon[1][x//5][y//5]
-    lat1=latLon[0][(x//5)+1][(y//5)+1]
-    lon1=latLon[1][(x//5)+1][(y//5)+1]
-    xlan=lat+(((lat1-lat)/5)*(x%5))
-    longitude=lon+(((lon1-lon)/5)*(x*5))
+
+    down=latLon[0][x//5][y//5]+(((latLon[0][(x//5)+1][y//5]-latLon[0][x//5][y//5])/5)*(x%5))
+    up = latLon[0][x//5][(y//5)+1]+(((latLon[0][(x//5)+1][(y//5)+1]-latLon[0][x//5][(y//5)+1])/5)*(x%5))
+    lat=down+(((up-down)/5)*(y%5))
+
+    down1=latLon[1][x//5][y//5]+(((latLon[1][(x//5)+1][y//5]-latLon[1][x//5][y//5])/5)*(x%5))
+    up1 = latLon[1][x//5][(y//5)+1]+(((latLon[1][(x//5)+1][(y//5)+1]-latLon[1][x//5][(y//5)+1])/5)*(x%5))
+    lon=down1+(((up1-down1)/5)*(y%5))
     return lat, lon
 def get_L(way, chanel):
     scales=get_support_data(chanel,way)
@@ -293,9 +295,9 @@ def main():
     "landsat_blue" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B2.TIF",}
 
     yuras_ways={'mod021':"C:/Users/perminov_u/Desktop/MODIS shots/20220406_091200_TERRA_MOD021KM.hdf"}
-    print(len(get_lat_lon(yuras_ways['mod021'])[1][4]))
-    print(get_pixel_coordinates(1249, 1353, yuras_ways['mod021']))
 
+    #поставь вместо моего пути свой и помолись дубу
+    print(get_pixel_coordinates(50, 60, yuras_ways['mod021']))
     #print(ndvi(ways["mod3"], ways["mod2"],show=True))
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
