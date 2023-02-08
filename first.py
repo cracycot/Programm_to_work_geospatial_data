@@ -6,10 +6,6 @@ from osgeo import osr
 from osgeo import gdal_array
 from osgeo import gdalconst
 import h5py
-
-
-
-
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -17,6 +13,20 @@ from shapely.geometry import Polygon
 from shapely.geometry import Point
 from shapely.plotting import plot_polygon, plot_points
 
+
+def get_lat_lon(way):
+    return [SD(way).select('Latitude')[:], SD(way).select('Longitude')[:]]
+
+
+def get_pixel_coordinates(x, y, way):
+    latLon = get_lat_lon(way)
+    lat = latLon[0][x // 5][y // 5]
+    lon = latLon[1][x // 5][y // 5]
+    lat1 = latLon[0][(x // 5) + 1][(y // 5) + 1]
+    lon1 = latLon[1][(x // 5) + 1][(y // 5) + 1]
+    xlan = lat + (((lat1 - lat) / 5) * (x % 5))
+    longitude = lon + (((lon1 - lon) / 5) * (x * 5))
+    return lat, lon
 
 def get_L(way, chanel):
     scales=get_support_data(chanel,way)
@@ -104,7 +114,7 @@ def ndvi(red_way, nir_way,way = 0, show=True):
     return ndvi_
 def get_longitude_latitude():
     print(1)
-def check_borders(longitude, latitude, level=4, region_name = "Krasnodar"):
+def check_borders(longitude,latitude,  level=4, region_name = "Krasnodar"):
     shape = ogr.Open(f"/Users/kirilllesniak/Downloads/Адм_территориальные_границы_РФ_в_формате_SHP/admin_level_{level}.shp")
     indexedLayer = shape.GetLayerByIndex(0)
     region = region_name
@@ -282,9 +292,10 @@ def main():
     "landsat_red" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B4.TIF",
     "landsat_green" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B3.TIF",
     "landsat_blue" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B2.TIF",}
+    print(check_borders(46.4,39.1))
     #print(ndvi(ways["mod3"], ways["mod2"],show=True))
-    way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
-    print(gdal.Info(gdal.Info(ways['mod2']+way)))
+    #way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
+    #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
