@@ -18,16 +18,19 @@ from shapely.geometry import Point
 def get_lat_lon(way):
     return [SD(way).select('Latitude')[:],SD(way).select('Longitude')[:]]
 
-def get_pixel_coordinates(y, x,way):
+def get_pixel_coordinates(x, y,way):
     latLon=get_lat_lon(way)
+    if len(latLon[0])>(y//5)+1 and len(latLon[0][0])> (x//5)+1:
+        down=latLon[0][y//5][x//5]+(((latLon[0][(y//5)+1][x//5]-latLon[0][y//5][x//5])/5)*(y%5))
+        up = latLon[0][y//5][(x//5)+1]+(((latLon[0][(y//5)+1][(x//5)+1]-latLon[0][y//5][(x//5)+1])/5)*(y%5))
+        lat=down+(((up-down)/5)*(x%5))
 
-    down=latLon[0][x//5][y//5]+(((latLon[0][(x//5)+1][y//5]-latLon[0][x//5][y//5])/5)*(x%5))
-    up = latLon[0][x//5][(y//5)+1]+(((latLon[0][(x//5)+1][(y//5)+1]-latLon[0][x//5][(y//5)+1])/5)*(x%5))
-    lat=down+(((up-down)/5)*(y%5))
-
-    down1=latLon[1][x//5][y//5]+(((latLon[1][(x//5)+1][y//5]-latLon[1][x//5][y//5])/5)*(x%5))
-    up1 = latLon[1][x//5][(y//5)+1]+(((latLon[1][(x//5)+1][(y//5)+1]-latLon[1][x//5][(y//5)+1])/5)*(x%5))
-    lon=down1+(((up1-down1)/5)*(y%5))
+        down1=latLon[1][y//5][x//5]+(((latLon[1][(y//5)+1][x//5]-latLon[1][y//5][x//5])/5)*(y%5))
+        up1 = latLon[1][y//5][(x//5)+1]+(((latLon[1][(y//5)+1][(x//5)+1]-latLon[1][y//5][(x//5)+1])/5)*(y%5))
+        lon=down1+(((up1-down1)/5)*(x%5))
+    else:
+        lat=latLon[0][len(latLon[0])-1][len(latLon[0][0])-1]
+        lon=latLon[1][len(latLon[0])-1][len(latLon[0][0])-1]
     return lat, lon
 def get_L(way, chanel):
     scales=get_support_data(chanel,way)
@@ -297,7 +300,7 @@ def main():
     yuras_ways={'mod021':"C:/Users/perminov_u/Desktop/MODIS shots/20220406_091200_TERRA_MOD021KM.hdf"}
 
     #поставь вместо моего пути свой и помолись дубу
-    print(get_pixel_coordinates(50, 60, yuras_ways['mod021']))
+    print(get_pixel_coordinates(345, 543, yuras_ways['mod021']))
     #print(ndvi(ways["mod3"], ways["mod2"],show=True))
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
