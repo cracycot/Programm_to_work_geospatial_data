@@ -22,6 +22,7 @@ def get_names_landsat(way):
             channals[f"B{el[-5]}"] = way + "/" + el
     return channals
 
+
 def ndvi(way):
     np.seterr(divide='ignore', invalid='ignore')
     channals =get_names_landsat(way)
