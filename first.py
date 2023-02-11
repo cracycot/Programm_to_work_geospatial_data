@@ -32,8 +32,8 @@ def ndvi(way):
     print(NIR.max())
     RED = gdal.Open(channals["B3"]).ReadAsArray()
     ndvi_ = np.zeros((RED.shape[0], RED.shape[1]))
-    for y in range(4000):
-        for x in range(4000):
+    for y in range(7000):
+        for x in range(7000):
             if (NIR[y][x] + RED[y][x]) != 0:
                 ndvi_[y][x] = (NIR[y][x] - RED[y][x]) / (NIR[y][x] + RED[y][x])
                 print(y,x)
@@ -43,6 +43,40 @@ def ndvi(way):
     plt.show()
     print(np.amax(ndvi_))
     return ndvi_
+
+def ndsi(way):
+    #np.setter(divide='ignore', invalid='ignore')
+    channels=get_names_landsat(way)
+    green=gdal.Open(channels['B2']).ReadAsArray().astype('float32')
+    swir=gdal.Open(channels['B5']).ReadAsArray().astype('float32')
+    print(green.max())
+    ndsi=np.zeros((swir.shape[0], swir.shape[1]))
+    for i in range(green.shape[0]):
+        print(i)
+        for j in range(green.shape[1]):
+            if green[i][j]!=0:
+                if swir[i][j]!=0:
+                        ndsi[i][j]=(green[i][j]-swir[i][j])/(green[i][j]+swir[i][j])
+    plt.imshow(ndsi)
+    plt.show()
+    return ndsi.max()
+def ndfsi(way):
+    np.setter(divide='ignore', invalid='ignore')
+    channels=get_names_landsat(way)
+    print(gdal.Dataset)
+    nir=gdal.Open(channels['B4']).ReadAsArray().astype('float32')
+    swir=gdal.Open(channels['B5']).ReadAsArray().astyper('float32')
+    ndsi=np.zeros((nir.shape[0], nir.shape[1]))
+    for i in range(nir.shape(0)):
+        print(i)
+        for j in range(nir.shape(1)):
+            if nir[i][j]!=0:
+                if swir[i][j]!=0:
+                    ndsi[i][j]=(nir[i][j]-swir[i][j])/(nir[i][j]+swir[i][j])
+    plt.imshow(ndsi)
+    plt.show()
+    print()
+
 def get_lat_lon(way):
     return [SD(way).select('Latitude')[:],SD(way).select('Longitude')[:]]
 
