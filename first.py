@@ -32,13 +32,14 @@ def ndvi(way):
     print(NIR.max())
     RED = gdal.Open(channals["B3"]).ReadAsArray()
     ndvi_ = np.zeros((RED.shape[0], RED.shape[1]))
-    for y in range(7000):
-        for x in range(7000):
-            if (NIR[y][x] + RED[y][x]) != 0:
-                ndvi_[y][x] = (NIR[y][x] - RED[y][x]) / (NIR[y][x] + RED[y][x])
-                print(y,x)
-            else:
-                continue
+    ndvi_ = (NIR - RED) / (NIR + RED)
+    # for y in range(7000):
+    #     for x in range(7000):
+    #         if (NIR[y][x] + RED[y][x]) != 0:
+    #             ndvi_[y][x] = (NIR[y][x] - RED[y][x]) / (NIR[y][x] + RED[y][x])
+    #             print(y,x)
+    #         else:
+    #             continue
     plt.imshow(ndvi_)
     plt.show()
     print(np.amax(ndvi_))
@@ -51,12 +52,13 @@ def ndsi(way):
     swir=gdal.Open(channels['B5']).ReadAsArray().astype('float32')
     print(green.max())
     ndsi=np.zeros((swir.shape[0], swir.shape[1]))
-    for i in range(green.shape[0]):
-        print(i)
-        for j in range(green.shape[1]):
-            if green[i][j]!=0:
-                if swir[i][j]!=0:
-                        ndsi[i][j]=(green[i][j]-swir[i][j])/(green[i][j]+swir[i][j])
+    ndsi = (green - swir) / (green + swir)
+    # for i in range(green.shape[0]):
+    #     print(i)
+    #     for j in range(green.shape[1]):
+    #         if green[i][j]!=0:
+    #             if swir[i][j]!=0:
+    #                     ndsi[i][j]=(green[i][j]-swir[i][j])/(green[i][j]+swir[i][j])
     plt.imshow(ndsi)
     plt.show()
     return ndsi.max()
@@ -67,15 +69,51 @@ def ndfsi(way):
     nir=gdal.Open(channels['B4']).ReadAsArray().astype('float32')
     swir=gdal.Open(channels['B5']).ReadAsArray().astyper('float32')
     ndsi=np.zeros((nir.shape[0], nir.shape[1]))
-    for i in range(nir.shape(0)):
-        print(i)
-        for j in range(nir.shape(1)):
-            if nir[i][j]!=0:
-                if swir[i][j]!=0:
-                    ndsi[i][j]=(nir[i][j]-swir[i][j])/(nir[i][j]+swir[i][j])
+    ndsi = (nir - swir) / (nir + swir)
+    # for i in range(nir.shape(0)):
+    #     print(i)
+    #     for j in range(nir.shape(1)):
+    #         if nir[i][j]!=0:
+    #             if swir[i][j]!=0:
+    #                 ndsi[i][j]=(nir[i][j]-swir[i][j])/(nir[i][j]+swir[i][j])
     plt.imshow(ndsi)
     plt.show()
     print()
+
+def fire_landsat(way):
+    channels = get_names_landsat(way)
+    B7 = gdal.Open(channels["B7"]).ReadAsArray().astype('float32')
+    B6 = gdal.Open(channels["B6"]).ReadAsArray().astype('float32')
+    B5 = gdal.Open(channels["B5"]).ReadAsArray().astype('float32')
+    B1 = gdal.Open(channels["B1"]).ReadAsArray().astype('float32')
+    fire = np.zeros((B5.shape[0], B5.shape[1]))
+    count = 0
+    f=np.logical_and((B7/B5 > 2.5 ), (B7 - B5 > 0.3))
+    f2=np.logical_and((f), (B7>0.5))
+    f1=np.logical_and((B7/B5 > 1.8 ), (B7 - B5 > 0.17))
+    f3=np.logical_and(f2, f1)
+    f10=np.logical_and((B6>0.8), (B1<0.2))
+    f11=np.logical_and((B5>0.4), (B7<0.1))
+    f13=np.logical_and(f10, f11)
+    np.logical_or(f3, f13, out=fire)
+    fire_cords=[]
+    fire_cords.append(np.where(fire==1))
+    print(fire_cords)
+    print(np.sum(fire == 1))
+    # for i in range(B5.shape[0]):
+    #     for j in range(B5.shape[1]):
+    #         if(((B7[i][j] / B5[i][j]) > 2.5) and (B7[i][j] - B5[i][j] > 0.3) and B7[i][j] > 0.5) and (((B7[i][j] / B5[i][j]) >  1.8) and (B7[i][j] - B5[i][j] > 0.17)):
+    #             count += 1
+    #             fire[i][j] = 1
+    #             continue
+    #         if(B6[i][j] > 0.8 and B1[i][j] < 0.2 and (B5[i][j] > 0.4 or B7[i][j] < 0.1)):
+    #             count += 1
+    #             fire[i][j] = 1
+    #         print(i,j)
+    plt.imshow(fire)
+    plt.imshow(B7)
+    plt.show()
+    return count
 
 def get_lat_lon(way):
     return [SD(way).select('Latitude')[:],SD(way).select('Longitude')[:]]
@@ -357,7 +395,7 @@ def main():
     #way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
-    print(ndvi(ways["landsat_astr"]))
+    print(fire_landsat(ways["landsat_astr"]))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
 if __name__ == '__main__':
