@@ -25,7 +25,8 @@ def get_names_landsat(way):
 def get_names_sentinel(way, band):
     prod = Reader().open(way)
     green=prod.load([band])
-    return green[list(green.keys())[0]][0]
+    return np.array(green[list(green.keys())[0]][0])
+
 
 
 
@@ -410,7 +411,7 @@ def main():
     #way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
-    print(float(get_names_sentinel(yuras_ways['sentinel'], 'GREEN')[0][0]))
+    print(get_names_sentinel(yuras_ways['sentinel'], 'GREEN')[0][0])
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
