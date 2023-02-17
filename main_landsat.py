@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
 from shapely.geometry import Point
 from eoreader.reader import Reader
+from time import time
+# from snappy import
 
 def get_names_landsat(way):
     a = os.listdir(way)
@@ -24,9 +26,16 @@ def get_names_landsat(way):
 
 def get_names_sentinel(way, band):
     prod = Reader().open(way)
-    green=prod.load([band])
-    return np.array(green[list(green.keys())[0]][0])
+    mas=prod.load([band])
+    return np.array(mas[list(mas.keys())[0]][0])
 
+
+# def LatLon_from_XY(ProductSceneGeoCoding, x, y):
+#     #From x,y position in satellite image (SAR), get the Latitude and Longitude
+#     geopos = ProductSceneGeoCoding.getGeoPos( (x, y), None)
+#     latitude = geopos.getLat()
+#     longitude = geopos.getLon()
+#     return latitude, longitude
 
 
 
@@ -93,6 +102,8 @@ def fire_landsat(way):
     B6 = gdal.Open(channels["B6"]).ReadAsArray().astype('float32')
     B5 = gdal.Open(channels["B5"]).ReadAsArray().astype('float32')
     B1 = gdal.Open(channels["B1"]).ReadAsArray().astype('float32')
+    R75=B7/B5
+    R76=B7/B6
     fire = np.zeros((B5.shape[0], B5.shape[1]))
     count = 0
     f=np.logical_and((B7/B5 > 2.5 ), (B7 - B5 > 0.3))
@@ -104,17 +115,17 @@ def fire_landsat(way):
     f13=np.logical_and(f10, f11)
     np.logical_or(f3, f13, out=fire)
     fire_cords=np.where(fire==1)
+    print('startToCum')
+    start=time()
     for x1 in range(len(fire_cords[0])):
         x = fire_cords[0][x1]-30
         y = fire_cords[1][x1]-30
-        for i in range(61):
-            for j in range(61):
-                    fire[x+i][y+j] = 1
-    for i in range(len(fire_cords[0])):
-        fire[fire_cords[0][i]][fire_cords[1][i]]=5
-
-    print(fire_cords)
-    print(np.sum(fire == 1), fire[4000][4000])
+        square75=R75[x:x+61, y:y+61]
+        square7=B7[x:x+61, y:y+61]
+        srkv=np.std(square75)
+        srkvP7=np.std(square7)
+        f=np.logical_and( np.logical_and((R75>(R75+max((srkv*3), (0.8)))) , (B7>B7+(max((srkvP7*3), 0.08)))) , R76>1.6, out=fire)
+    print('CumToCum', (time()-start))
     # for i in range(B5.shape[0]):
     #     for j in range(B5.shape[1]):
     #         if(((B7[i][j] / B5[i][j]) > 2.5) and (B7[i][j] - B5[i][j] > 0.3) and B7[i][j] > 0.5) and (((B7[i][j] / B5[i][j]) >  1.8) and (B7[i][j] - B5[i][j] > 0.17)):
@@ -411,7 +422,7 @@ def main():
     #way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
-    print(get_names_sentinel(yuras_ways['sentinel'], 'GREEN')[0][0])
+    fire_landsat(yuras_ways['land_astrahan'])
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
