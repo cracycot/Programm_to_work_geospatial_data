@@ -102,10 +102,17 @@ def sentinel_ndvi(way):
     nir=numpy.array(get_names_sentinel(way, 'NIR'))
     red=numpy.array(get_names_sentinel(way, 'RED'))
     ndvi=(nir-red)/(nir+red)
-    print(ndvi)
-    plt.imshow(ndvi)
-    plt.show()
     return ndvi
+def sentinel_ndsi(way):
+    green=numpy.array(get_names_sentinel(way, 'GREEN'))
+    swir=numpy.array(get_names_sentinel(way, 'SWIR'))
+    ndsi=(green-swir)/(swir+green)
+    return ndsi
+def sentinel_ndfsi(way):
+    nir=numpy.array(get_names_sentinel(way, 'NIR'))
+    swir=numpy.array(get_names_sentinel(way, 'SWIR_1'))
+    ndfsi=(nir - swir) / (nir + swir)
+    return ndfsi
 def fire_landsat(way):
     channels = get_names_landsat(way)
     B7 = gdal.Open(channels["B7"]).ReadAsArray().astype('float32')
@@ -433,8 +440,9 @@ def main():
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
     #fire_landsat(yuras_ways['land_astrahan'])
-    ndvi=sentinel_ndvi(yuras_ways['sentinel'])
-    print(ndvi)
+    print(sentinel_ndvi(yuras_ways['sentinel']))
+    print(sentinel_ndsi(yuras_ways['sentinel']))
+    print(sentinel_ndfsi(yuras_ways['sentinel']))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
