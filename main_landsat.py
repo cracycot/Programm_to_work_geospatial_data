@@ -1,3 +1,4 @@
+import numpy
 from pyhdf import HDF
 from pyhdf.SD import SD,SDC
 from osgeo import gdal
@@ -27,15 +28,17 @@ def get_names_landsat(way):
 def get_names_sentinel(way, band):
     prod = Reader().open(way)
     mas=prod.load([band])
-    return np.array(mas[list(mas.keys())[0]][0])
+    return mas[list(mas.keys())[0]][0]
+def get_cordinates_sentinel(file, x, y):
+    return [float(file[x][y].coords['x']), float(file[x][y].coords['y'])]
 
 
-# def LatLon_from_XY(ProductSceneGeoCoding, x, y):
-#     #From x,y position in satellite image (SAR), get the Latitude and Longitude
-#     geopos = ProductSceneGeoCoding.getGeoPos( (x, y), None)
-#     latitude = geopos.getLat()
-#     longitude = geopos.getLon()
-#     return latitude, longitude
+def LatLon_from_XY(ProductSceneGeoCoding, x, y):
+    #From x,y position in satellite image (SAR), get the Latitude and Longitude
+    geopos = ProductSceneGeoCoding.getGeoPos( (x, y), None)
+    latitude = geopos.getLat()
+    longitude = geopos.getLon()
+    return latitude, longitude
 
 
 
@@ -96,8 +99,8 @@ def ndfsi(way):
     plt.show()
     print()
 def sentinel_ndvi(way):
-    nir=get_names_sentinel(way, 'NIR')
-    red=get_names_sentinel(way, 'RED')
+    nir=numpy.array(get_names_sentinel(way, 'NIR'))
+    red=numpy.array(get_names_sentinel(way, 'RED'))
     ndvi=(nir-red)/(nir+red)
     print(ndvi)
     plt.imshow(ndvi)
@@ -431,6 +434,7 @@ def main():
     #fire(ways["mod021_kaliningrad"])
     #fire_landsat(yuras_ways['land_astrahan'])
     ndvi=sentinel_ndvi(yuras_ways['sentinel'])
+    print(ndvi)
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
