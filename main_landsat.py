@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
 from shapely.geometry import Point
 from eoreader.reader import Reader
+from eoreader.bands import *
+import rasterio
 from time import time
 # from snappy import
 
@@ -104,9 +106,18 @@ def sentinel_ndvi(way):
     ndvi=(nir-red)/(nir+red)
     return ndvi
 def sentinel_ndsi(way):
-    green=numpy.array(get_names_sentinel(way, 'GREEN'))
-    swir=numpy.array(get_names_sentinel(way, 'SWIR'))
+    file=Reader().open(way)
+    way = file.get_band_paths([SWIR_1])[list(file.get_band_paths([SWIR_1]).keys())[0]]
+    swir1 = np.array((rasterio.open(way)).read())[0]
+    swir = np.zeros((swir1.shape[0] * 2, swir1.shape[1] * 2))
+    for i in range(swir.shape[0]):
+        for j in range(swir.shape[1]):
+            swir[i][j] = swir1[i // 2][j // 2]
+    mas = file.load([GREEN])
+    green=np.array(mas[list(mas.keys())[0]][0])
     ndsi=(green-swir)/(swir+green)
+    plt.imshow(ndsi)
+    plt.show()
     return ndsi
 def sentinel_ndfsi(way):
     nir=numpy.array(get_names_sentinel(way, 'NIR'))
@@ -440,9 +451,8 @@ def main():
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
     #fire_landsat(yuras_ways['land_astrahan'])
-    print(sentinel_ndvi(yuras_ways['sentinel']))
-    print(sentinel_ndsi(yuras_ways['sentinel']))
-    print(sentinel_ndfsi(yuras_ways['sentinel']))
+    #print(sentinel_ndsi(yuras_ways['sentinel']))
+    print(ndsi(yuras_ways['land_astrahan']))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
