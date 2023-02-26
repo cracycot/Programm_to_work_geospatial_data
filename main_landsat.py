@@ -107,8 +107,8 @@ def sentinel_ndvi(way):
     return ndvi
 def sentinel_ndsi(way):
     file=Reader().open(way)
-    way = file.get_band_paths([SWIR_1])[list(file.get_band_paths([SWIR_1]).keys())[0]]
-    swir1 = np.array((rasterio.open(way)).read())[0]
+    way1 = file.get_band_paths([SWIR_1])[list(file.get_band_paths([SWIR_1]).keys())[0]]
+    swir1 = np.array((rasterio.open(way1)).read())[0]
     swir = np.zeros((swir1.shape[0] * 2, swir1.shape[1] * 2))
     for i in range(swir.shape[0]):
         for j in range(swir.shape[1]):
@@ -119,10 +119,35 @@ def sentinel_ndsi(way):
     plt.imshow(ndsi)
     plt.show()
     return ndsi
+def sentinel_mndwi(way):
+    file=Reader().open(way)
+    way1 = file.get_band_paths([SWIR_2])[list(file.get_band_paths([SWIR_2]).keys())[0]]
+    swir1 = np.array((rasterio.open(way1)).read())[0]
+    swir = np.zeros((swir1.shape[0] * 2, swir1.shape[1] * 2))
+    for i in range(swir.shape[0]):
+        for j in range(swir.shape[1]):
+            swir[i][j] = swir1[i // 2][j // 2]
+    mas = file.load([GREEN])
+    green=np.array(mas[list(mas.keys())[0]][0])
+    mndwi=(green-swir)/(green+swir)
+    plt.imshow(mndwi)
+    plt.show()
+    print(max(mndwi))
+    print(min(mndwi))
+    return mndwi
 def sentinel_ndfsi(way):
-    nir=numpy.array(get_names_sentinel(way, 'NIR'))
-    swir=numpy.array(get_names_sentinel(way, 'SWIR_1'))
+    file=Reader().open(way)
+    way1=file.get_band_paths([SWIR_1])[list(file.get_band_paths([SWIR_1]).keys())[0]]
+    swir1=np.array((rasterio.open(way1)).read())[0]
+    swir=np.zeros((swir1.shape[0] * 2, swir1.shape[1] * 2))
+    for i in range(swir.shape[0]):
+        for j in range(swir.shape[1]):
+            swir[i][j] = swir1[i // 2][j // 2]
+    mas = file.load([NIR])
+    nir=np.array(mas[list(mas.keys())[0]][0])
     ndfsi=(nir - swir) / (nir + swir)
+    plt.imshow(ndfsi)
+    plt.show()
     return ndfsi
 def fire_landsat(way):
     channels = get_names_landsat(way)
@@ -452,7 +477,7 @@ def main():
     #fire(ways["mod021_kaliningrad"])
     #fire_landsat(yuras_ways['land_astrahan'])
     #print(sentinel_ndsi(yuras_ways['sentinel']))
-    print(ndsi(yuras_ways['land_astrahan']))
+    print(sentinel_mndwi(yuras_ways['sentinel']))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
