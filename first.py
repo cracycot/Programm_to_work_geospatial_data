@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
 from shapely.geometry import Point
 from shapely.plotting import plot_polygon, plot_points
+from eoreader.reader import Reader
+from time import time
 
 def get_names_landsat(way):
     a = os.listdir(way)
@@ -22,15 +24,53 @@ def get_names_landsat(way):
             channals[f"B{el[-5]}"] = way + "/" + el
     return channals
 
+def get_ways_sentinel(way):
+    way1 = way + "/HTML" + "/GRANULE"
+    a = os.listdir(way1)
+    print(a)
+    for el in a:
+        if el != "QI_DATA":
+            way1 += el.split(".")[0]
+            way1 += "/"
+    way1 += "IMG_DATA"
+    ways = dict()
+    for el in os.listdir(way1):
+        a = 1
+        ways["B" + el[-6:-4]] = (way1 + el)
+    return ways
 
-def ndvi(way):
+def get_cordinates_sentinel(file, x, y):
+    return [float(file[x][y].coords['x']), float(file[x][y].coords['y'])]
+def get_cordinates_landsat(way, x, y):
+    dataset = gdal.Open(way)
+    x = dataset.RasterXSize
+    y = dataset.RasterYSize
+    geo = dataset.GetGeoTransform()
+    return []
+def get_names_sentinel(way, band):
+    prod = Reader().open(way)
+    green = prod.load([band])
+    return np.array(green[list(green.keys())[0]][0])
+
+def sentinel_ndvi(way):
+    nir=get_names_sentinel(way, 'NIR')
+    red=get_names_sentinel(way, 'RED')
+    ndvi=(nir-red)/(nir+red)
+    print(ndvi)
+    plt.imshow(ndvi)
+    plt.show()
+    return ndvi
+
+def ndvi(red, nir):
     np.seterr(divide='ignore', invalid='ignore')
-    channals =get_names_landsat(way)
+    #channals =get_names_landsat(way)
     print(gdal.Dataset)
-    NIR = gdal.Open(channals["B4"]).ReadAsArray().astype("float32")
+    NIR = gdal.Open(nir).ReadAsArray().astype("float32")
+    RED = gdal.Open(red).ReadAsArray().astype("float32")
+    #NIR = gdal.Open(channals["B4"]).ReadAsArray().astype("float32")
     #mas_output(NIR)
     print(NIR.max())
-    RED = gdal.Open(channals["B3"]).ReadAsArray()
+    #RED = gdal.Open(channals["B3"]).ReadAsArray()
     ndvi_ = np.zeros((RED.shape[0], RED.shape[1]))
     ndvi_ = (NIR - RED) / (NIR + RED)
     # for y in range(7000):
@@ -86,6 +126,8 @@ def fire_landsat(way):
     B6 = gdal.Open(channels["B6"]).ReadAsArray().astype('float32')
     B5 = gdal.Open(channels["B5"]).ReadAsArray().astype('float32')
     B1 = gdal.Open(channels["B1"]).ReadAsArray().astype('float32')
+    R75 = B7 / B5
+    R76 = B7 / B6
     fire = np.zeros((B5.shape[0], B5.shape[1]))
     count = 0
     f=np.logical_and((B7/B5 > 2.5 ), (B7 - B5 > 0.3))
@@ -96,6 +138,32 @@ def fire_landsat(way):
     f11=np.logical_and((B5>0.4), (B7<0.1))
     f13=np.logical_and(f10, f11)
     np.logical_or(f3, f13, out=fire)
+    fire_cords = np.where(fire == 1)
+    print('startToCum')
+    start = time()
+    for x1 in range(len(fire_cords[0])):
+        x = fire_cords[0][x1] - 30
+        y = fire_cords[1][x1] - 30
+        square75 = R75[x:x + 61, y:y + 61]
+        square7 = B7[x:x + 61, y:y + 61]
+        srkv = np.std(square75)
+        srkvP7 = np.std(square7)
+        f = np.logical_and(
+            np.logical_and((R75 > (R75 + max((srkv * 3), (0.8)))), (B7 > B7 + (max((srkvP7 * 3), 0.08)))), R76 > 1.6,
+            out=fire)
+    print('CumToCum', (time() - start))
+    # for x1 in range(len(fire_cords[0])):
+    #     x = fire_cords[0][x1] - 30
+    #     y = fire_cords[1][x1] - 30
+    #     for i in range(61):
+    #         for j in range(61):
+    #             if
+    #                 fire[x + i][y + j] = 1
+    # for i in range(len(fire_cords[0])):
+    #     fire[fire_cords[0][i]][fire_cords[1][i]] = 5
+
+    print(fire_cords)
+    print(np.sum(fire == 1), fire[4000][4000])
     fire_cords=[]
     fire_cords.append(np.where(fire==1))
     print(fire_cords)
@@ -386,16 +454,36 @@ def main():
     "mod021_astrahan":"/Users/kirilllesniak/Downloads/hdf-sort/1/20220310_092621_TERRA_MOD021KM.hdf",
     "mod021_kaliningrad":"/Users/kirilllesniak/Downloads/hdf-sort/1/20220310_092621_TERRA_MOD021KM.hdf",
     "landsat_astr" : "/Users/kirilllesniak/Downloads/LC09_L2SP_168028_20220321_20220323_02_T1",
+    "sentinel" : "/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE",
     "landsat_4" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B4.TIF",
     "landsat_5" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B5.TIF",
     "landsat_red" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B4.TIF",
     "landsat_green" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B3.TIF",
-    "landsat_blue" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B2.TIF",}
+    "landsat_blue" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B2.TIF",
+    "l_red" : "/Users/kirilllesniak/Downloads/LC08_L2SP_179017_20210510_20210518_02_T1_SR_B4.TIF",
+    "l_nir" : "/Users/kirilllesniak/Downloads/LC08_L2SP_179017_20210510_20210518_02_T1_SR_B5.TIF",
+    "l_red2020" : "/Users/kirilllesniak/Downloads/LC08_L2SP_179017_20200523_20200820_02_T1_SR_B4.TIF",
+    "l_nir2020" : "/Users/kirilllesniak/Downloads/LC08_L2SP_179017_20200523_20200820_02_T1_SR_B5.TIF"}
     #print(ndvi(ways["mod3"], ways["mod2"],show=True))
     #way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
     #fire(ways["mod021_kaliningrad"])
-    print(fire_landsat(ways["landsat_astr"]))
+    a = gdal.Open("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2").ReadAsArray()
+
+    print(np.min(a))
+    # ls_2021 = ndvi(ways["l_red"], ways["l_nir"])
+    # ls_2020 = ndvi(ways["l_red2020"], ways["l_nir2020"])
+    # print(ls_2021.shape[1])
+    # f = np.pad(ls_2021, ((1, 1), (1, 1)), mode="symmetric")
+    # print(f.shape[1])
+    # np.seterr(divide='ignore', invalid='ignore')
+    # sum = 0
+    # #print(np.max(ls_2021), np.max(ls_2020))
+    # l = ls_2021 - ls_2020
+    # for i in range(ls_2020.shape[0]):
+    #     for j in range(ls_2020.shape[1]):
+    #         sum += ls_2021[i] - ls_2020[i]
+    #print(sum)
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
 if __name__ == '__main__':
