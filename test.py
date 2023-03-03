@@ -14,26 +14,37 @@ import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
 from shapely.geometry import Point
 from shapely.plotting import plot_polygon, plot_points
-def get_ways_sentinel(way):
-    way1 = way + "/HTML" + "/GRANULE"
-    a = os.listdir(way1)
-    print(a)
-    for el in a:
-        if el != "QI_DATA":
-            way1 += el.split(".")[0]
-            way1 += "/"
-    way1 += "IMG_DATA"
-    ways = dict()
-    for el in os.listdir(way1):
-        a = 1
-        ways["B" + el[-6:-4]] = (way1 + el)
-    return ways
+# def get_ways_sentinel(way):
+#     way1 = way + "/HTML" + "/GRANULE"
+#     a = os.listdir(way1)
+#     print(a)
+#     for el in a:
+#         if el != "QI_DATA":
+#             way1 += el.split(".")[0]
+#             way1 += "/"
+#     way1 += "IMG_DATA"
+#     ways = dict()
+#     for el in os.listdir(way1):
+#         a = 1
+#         ways["B" + el[-6:-4]] = (way1 + el)
+#     return ways
+#6-5-4
 #/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE
+#/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE
 #print(os.listdir("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE.DS_Store"))
-print(get_ways_sentinel("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE")["B09"])
+def get_ways_sentinell(way):
+    ways_slov = dict()
+    for root,dirs,files in os.walk(way):
+        for filenames in files:
+            if filenames[0] == "T":
+                ways_slov[filenames[-7:-4]] = root + "/" + filenames
+    return ways_slov
+#print(gdal.Open('/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/T44QRJ_20230211T044929_B01.jp2'))
+print(gdal.Open(get_ways_sentinell("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE")["B08"]))
 
 # start=time()
 # a = gdal.Open("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2").ReadAsArray()
+# print(a)
 # print(np.min(a), np.max(a))
 # print(time()-start)
 

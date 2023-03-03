@@ -24,20 +24,13 @@ def get_names_landsat(way):
             channals[f"B{el[-5]}"] = way + "/" + el
     return channals
 
-def get_ways_sentinel(way):
-    way1 = way + "/HTML" + "/GRANULE"
-    a = os.listdir(way1)
-    print(a)
-    for el in a:
-        if el != "QI_DATA":
-            way1 += el.split(".")[0]
-            way1 += "/"
-    way1 += "IMG_DATA"
-    ways = dict()
-    for el in os.listdir(way1):
-        a = 1
-        ways["B" + el[-6:-4]] = (way1 + el)
-    return ways
+def get_ways_sentinell(way):
+    ways_slov = dict()
+    for root,dirs,files in os.walk(way):
+        for filenames in files:
+            if filenames[0] == "T":
+                ways_slov[filenames[-7:-4]] = root + "/" + filenames
+    return ways_slov
 
 def get_cordinates_sentinel(file, x, y):
     return [float(file[x][y].coords['x']), float(file[x][y].coords['y'])]
