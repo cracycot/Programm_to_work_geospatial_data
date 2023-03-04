@@ -19,6 +19,7 @@ import rasterio
 from time import time
 # from snappy import
 
+#Блок функций для открытия снимков
 def get_names_landsat(way):
     a = os.listdir(way)
     channals = {}
@@ -26,15 +27,23 @@ def get_names_landsat(way):
         if el.endswith(".TIF") and el[-5] in "0123456789":
             channals[f"B{el[-5]}"] = way + "/" + el
     return channals
-
 def get_names_sentinel(way, band):
     prod = Reader().open(way)
     mas=prod.load([band])
     return mas[list(mas.keys())[0]][0]
+def get_ways_sentinel(way):
+    ways_slov = dict()
+    for root,dirs,files in os.walk(way):
+        for filenames in files:
+            if filenames[0] == "T":
+                ways_slov[filenames[-7:-4]] = root + "/" + filenames
+    return ways_slov
+
+#этот кал надо переделать, он медленный и через eoreader
 def get_cordinates_sentinel(file, x, y):
     return [float(file[x][y].coords['x']), float(file[x][y].coords['y'])]
 
-
+#я хуй его знает для чего это надо
 def LatLon_from_XY(ProductSceneGeoCoding, x, y):
     #From x,y position in satellite image (SAR), get the Latitude and Longitude
     geopos = ProductSceneGeoCoding.getGeoPos( (x, y), None)
@@ -43,121 +52,87 @@ def LatLon_from_XY(ProductSceneGeoCoding, x, y):
     return latitude, longitude
 
 
-
+#Блок функций расчета индексов для landsat 8
 def ndvi(way):
     np.seterr(divide='ignore', invalid='ignore')
     channals =get_names_landsat(way)
-    print(gdal.Dataset)
     NIR = gdal.Open(channals["B4"]).ReadAsArray().astype("float32")
-    #mas_output(NIR)
-    print(NIR.max())
     RED = gdal.Open(channals["B3"]).ReadAsArray()
-    ndvi_ = np.zeros((RED.shape[0], RED.shape[1]))
     ndvi_ = (NIR - RED) / (NIR + RED)
-    # for y in range(7000):
-    #     for x in range(7000):
-    #         if (NIR[y][x] + RED[y][x]) != 0:
-    #             ndvi_[y][x] = (NIR[y][x] - RED[y][x]) / (NIR[y][x] + RED[y][x])
-    #             print(y,x)
-    #         else:
-    #             continue
     plt.imshow(ndvi_)
     plt.show()
-    print(np.amax(ndvi_))
     return ndvi_
 
 def ndsi(way):
-    #np.setter(divide='ignore', invalid='ignore')
+    np.setter(divide='ignore', invalid='ignore')
     channels=get_names_landsat(way)
     green=gdal.Open(channels['B2']).ReadAsArray().astype('float32')
     swir=gdal.Open(channels['B5']).ReadAsArray().astype('float32')
-    print(green.max())
-    ndsi=np.zeros((swir.shape[0], swir.shape[1]))
-    ndsi = (green - swir) / (green + swir)
-    # for i in range(green.shape[0]):
-    #     print(i)
-    #     for j in range(green.shape[1]):
-    #         if green[i][j]!=0:
-    #             if swir[i][j]!=0:
-    #                     ndsi[i][j]=(green[i][j]-swir[i][j])/(green[i][j]+swir[i][j])
-    plt.imshow(ndsi)
+    ndsi_ = (green - swir) / (green + swir)
+    plt.imshow(ndsi_)
     plt.show()
-    return ndsi.max()
+    return ndsi_
+
 def ndfsi(way):
     np.setter(divide='ignore', invalid='ignore')
     channels=get_names_landsat(way)
-    print(gdal.Dataset)
     nir=gdal.Open(channels['B4']).ReadAsArray().astype('float32')
     swir=gdal.Open(channels['B5']).ReadAsArray().astyper('float32')
-    ndsi=np.zeros((nir.shape[0], nir.shape[1]))
-    ndsi = (nir - swir) / (nir + swir)
-    # for i in range(nir.shape(0)):
-    #     print(i)
-    #     for j in range(nir.shape(1)):
-    #         if nir[i][j]!=0:
-    #             if swir[i][j]!=0:
-    #                 ndsi[i][j]=(nir[i][j]-swir[i][j])/(nir[i][j]+swir[i][j])
-    plt.imshow(ndsi)
+    ndfsi_ = (nir - swir) / (nir + swir)
+    plt.imshow(ndfsi_)
     plt.show()
-    print()
+    return ndfsi_
+
 def mndwi(way):
+    np.setter(divide='ignore', invalid='ignore')
     channels=get_names_landsat(way)
     green=gdal.Open(channels['B2']).ReadAsArray().astype('float32')
     swir=gdal.Open(channels['B7']).ReadAsArray().astype('float32')
-    mndwi=np.zeros((swir.shape[0], swir.shape[1]))
-    mndwi=(green-swir)/(green+swir)
-    plt.imshow(mndwi)
+    mndwi_=(green-swir)/(green+swir)
+    plt.imshow(mndwi_)
     plt.show()
+    return mndwi_
+
+#Блок функций расчета индексов для sentinel 2
 def sentinel_ndvi(way):
-    nir=numpy.array(get_names_sentinel(way, 'NIR'))
-    red=numpy.array(get_names_sentinel(way, 'RED'))
-    ndvi=(nir-red)/(nir+red)
-    return ndvi
+    nir=gdal.Open(get_ways_sentinel(way)['B08']).ReadAsArray()
+    red=gdal.Open(get_ways_sentinel(way)['B04']).ReadAsArray()
+    ndvi_sentinel=(nir-red)/(nir+red)
+    plt.imshow(ndvi_sentinel)
+    plt.show()
+    return ndvi_sentinel
+
 def sentinel_ndsi(way):
-    file=Reader().open(way)
-    way1 = file.get_band_paths([SWIR_1])[list(file.get_band_paths([SWIR_1]).keys())[0]]
-    swir1 = np.array((rasterio.open(way1)).read())[0]
-    swir = np.zeros((swir1.shape[0] * 2, swir1.shape[1] * 2))
-    for i in range(swir.shape[0]):
-        for j in range(swir.shape[1]):
-            swir[i][j] = swir1[i // 2][j // 2]
-    mas = file.load([GREEN])
-    green=np.array(mas[list(mas.keys())[0]][0])
-    ndsi=(green-swir)/(swir+green)
-    plt.imshow(ndsi)
+    b3 =gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray()
+    b12 =gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray()
+    swir = np.repeat(b12, 2, axis=1).astype('float32')
+    swir = np.repeat(swir, 2, axis=0).astype('float32')
+    ndsi_sentinel = (b3 - swir) / (b3 + swir)
+    plt.imshow(ndsi_sentinel)
     plt.show()
-    return ndsi
+    return ndsi_sentinel
+
 def sentinel_mndwi(way):
-    file=Reader().open(way)
-    way1 = file.get_band_paths([SWIR_1])[list(file.get_band_paths([SWIR_1]).keys())[0]]
-    swir1 = np.array((rasterio.open(way1)).read())[0]
-    # swir = np.zeros((swir1.shape[0] * 2, swir1.shape[1] * 2))
-    # for i in range(swir.shape[0]):
-    #     for j in range(swir.shape[1]):
-    #         swir[i][j] = swir1[i // 2][j // 2]
-    mas = file.load([GREEN])
-    green=np.array(mas[list(mas.keys())[0]][0])
-    gdal.gdal_calc.py(green, swir1)
-    # mndwi=(green-swir)/(green+swir)
-    plt.imshow(swir1)
+    b3 =gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray()
+    b12 =gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray()
+    swir = np.repeat(b12, 2, axis=1).astype('float32')
+    swir = np.repeat(swir, 2, axis=0).astype('float32')
+    mndwi_sentinel = (b3 - swir) / (b3 + swir)
+    plt.imshow(mndwi_sentinel)
     plt.show()
-    print(max(mndwi))
-    print(min(mndwi))
-    return mndwi
+    return mndwi_sentinel
+
 def sentinel_ndfsi(way):
-    file=Reader().open(way)
-    way1=file.get_band_paths([SWIR_1])[list(file.get_band_paths([SWIR_1]).keys())[0]]
-    swir1=np.array((rasterio.open(way1)).read())[0]
-    swir=np.zeros((swir1.shape[0] * 2, swir1.shape[1] * 2))
-    for i in range(swir.shape[0]):
-        for j in range(swir.shape[1]):
-            swir[i][j] = swir1[i // 2][j // 2]
-    mas = file.load([NIR])
-    nir=np.array(mas[list(mas.keys())[0]][0])
-    ndfsi=(nir - swir) / (nir + swir)
-    plt.imshow(ndfsi)
+    b12 =gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray()
+    swir = np.repeat(b12, 2, axis=1).astype('float32')
+    swir = np.repeat(swir, 2, axis=0).astype('float32')
+    nir = gdal.Open(get_ways_sentinel(way)['B08']).ReadAsArray()
+    ndfsi_sentinel=(nir - swir) / (nir + swir)
+    plt.imshow(ndfsi_sentinel)
     plt.show()
-    return ndfsi
+    return ndfsi_sentinel
+
+#Блок дроче-Функций
 def fire_landsat(way):
     channels = get_names_landsat(way)
     B7 = gdal.Open(channels["B7"]).ReadAsArray().astype('float32')
@@ -202,6 +177,7 @@ def fire_landsat(way):
     plt.show()
     return count
 
+#Координаты модиса
 def get_lat_lon(way):
     return [SD(way).select('Latitude')[:],SD(way).select('Longitude')[:]]
 
@@ -215,6 +191,7 @@ def get_pixel_coordinates(x, y,way):
     longitude=lon+(((lon1-lon)/5)*(x*5))
     return lat, lon
 
+#Ещё одна дрочефункция
 def get_L(way, chanel):
     scales=get_support_data(chanel,way)
     sl=get_fileName(chanel, way)["22"]
@@ -233,6 +210,7 @@ def mass_cast(mas,width , long):
             m[y][x] = mas[y// 5][x//5]
     return m
 
+#Это писал индус, для получения путей каналов модиса
 def get_SubFileName(way, chanel):
     a = str(gdal.Info(way)).split('\n')
     name = ''
@@ -270,20 +248,26 @@ def get_reflectance_scales_and_offsets(way,chanel):
     ref["reflectance_scales"] = [float(x) for x in ref_scales]
     ref["reflectance_offsets"] = [float(x) for x in ref_offset]
     return ref
+
+#просто вывод массива
 def mas_output(mas):
     for i in range(mas.shape[0]):
         for j in range(mas.shape[1]):
             print(mas[i][j], end=' ')
         print()
+#Рудимент
 def normalize(input_band):
     min_a , max_a = input_band.min()*1.0 ,input_band.max()*1.0
     return ((input_band*1.0 - min_a*1.0)/(max_a*1.0 - min_a))
+
+#это вроде тоже для модиса
 def get_rastr(way):
     gdalData = gdal.Open(way)
     raster = gdalData.ReadAsArray()
     mas = np.array(raster)
     print(type(mas))
     return mas
+#я хз, зачем это нам
 def ndvi_g(red_way, nir_way,way = 0, show=True):
     if way:
         r = gdal.Open(way)
@@ -299,8 +283,10 @@ def ndvi_g(red_way, nir_way,way = 0, show=True):
         plt.imshow(np.dstack(ndvi_)[0])
         plt.show()
     return ndvi_
+#Имба, без этой функции все сломается
 def get_longitude_latitude():
     print(1)
+#обрезка растра
 def check_borders(longitude,latitude,  level=4, region_name = "Krasnodar"):
     shape = ogr.Open(f"/Users/kirilllesniak/Downloads/Адм_территориальные_границы_РФ_в_формате_SHP/admin_level_{level}.shp")
     indexedLayer = shape.GetLayerByIndex(0)
@@ -321,6 +307,7 @@ def check_borders(longitude,latitude,  level=4, region_name = "Krasnodar"):
     #plt.show()
     return polygon.contains(point)
 
+#ещё один ndvi
 def ndvi_mas(nir, red, show=True):
     np.seterr(divide='ignore', invalid='ignore')
     print(nir[1][3] - red[1][3], nir[1][3] + red[1][3])
@@ -330,6 +317,7 @@ def ndvi_mas(nir, red, show=True):
         plt.text(0.0, 0.0, "maxNdvi:   "+str(ndvi.max()))
         plt.show()
     return ndvi
+#Функция, которую кирилл искал, как сделать(вывод rgb)
 def show_as_png(way):
     mas = gdal.Open(way)
     green = mas.GetRasterBand(4).ReadAsArray()
@@ -338,10 +326,10 @@ def show_as_png(way):
     rgb = np.dstack([normalize(red),normalize(green),normalize(blue)])
     plt.imshow(rgb)
     plt.show()
-
+#Кирилл это сделал для модиса, но даже там это не надо
 def open_file(way):
     return SD(way,SDC.WRITE|SDC.CREATE|SDC.READ)
-
+#тоже для модиса, но полезно
 def get_fileName(chanel, way):
     name=get_SubFileName(way, chanel)
     BandsArray= gdal.Open(name).ReadAsArray()
@@ -376,6 +364,7 @@ def get_support_data(channel, way):
     spisok["radiance_scales"] = radiance_scales
     spisok["radiance_offset"] = radiance_offset
     return spisok
+#очередная дрочефункция, но подрочевее
 def fire(file_name, channel = 31):
     np.seterr(divide='ignore', invalid='ignore')
     h = 6.62607015 * 10 ** -34
@@ -486,7 +475,9 @@ def main():
     #fire(ways["mod021_kaliningrad"])
     #fire_landsat(yuras_ways['land_astrahan'])
     #print(sentinel_ndsi(yuras_ways['sentinel']))
-    print(sentinel_mndwi(yuras_ways['land_astrahan']))
+    #print(sentinel_mndwi(yuras_ways['sentinel']))
+    sentinel_ndfsi(yuras_ways['sentinel'])
+    #print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
     #gdalData = gdal.Open(ways["mod2"])
