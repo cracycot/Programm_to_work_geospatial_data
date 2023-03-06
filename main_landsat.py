@@ -3,6 +3,10 @@ from pyhdf import HDF
 from pyhdf.SD import SD,SDC
 from osgeo import gdal
 from osgeo import ogr
+from glob import glob
+import geopandas as gpd
+import xarray as xr
+import rioxarray as rxr
 from osgeo import osr
 from osgeo import gdal_array
 from osgeo import gdalconst
@@ -18,6 +22,46 @@ from eoreader.bands import *
 import rasterio
 from time import time
 # from snappy import
+
+#Блок функций для открытия снимков
+
+def open_clean_band(band_path, crop_layer=None):
+    if crop_layer is not None:
+        try:
+            clip_bound = crop_layer.geometry
+            cleaned_band = rxr.open_rasterio(band_path,
+                                             masked=True).rio.clip(clip_bound,
+                                            from_disk=True).squeeze()
+        except Exception as err:
+            raise AttributeError("Oops, I need a geodataframe object for this to work.")
+    else:
+        cleaned_band = rxr.open_rasterio(band_path,
+                                         masked=True)
+    return cleaned_band.squeeze()
+def collect_paths(path_to_folder):
+    paths = glob(os.path.join(path_to_folder,"*SR_B*.TIF"))
+    if not paths:
+        paths = glob(os.path.join(path_to_folder,"*band*.tif"))
+    return sorted(paths)
+def process_bands(paths, crop_layer=None, stack=False):
+    all_bands = []
+    for i, aband in enumerate(paths):
+        cleaned = open_clean_band(aband, crop_layer)
+        cleaned["band"] = i + 1
+        all_bands.append(cleaned)
+    if stack:
+        return xr.concat(all_bands, dim="band")
+    else:
+        return all_bands
+def get_coords_list(band):
+    coords = band.coords
+    return {"x": (coords["x"].values * (10 ** (-4))), "y": coords["y"].values * (10 ** (-5))}
+
+def get_cord_lansat(paths_to_tifs1):
+    paths_to_tifs = collect_paths(paths_to_tifs1)
+    landsat_post_fire_xr =  process_bands(paths_to_tifs, stack=True)
+    coordinates_list = get_coords_list(landsat_post_fire_xr[0])
+    return coordinates_list
 
 #Блок функций для открытия снимков
 def get_names_landsat(way):
@@ -113,13 +157,15 @@ def sentinel_ndsi(way):
     return ndsi_sentinel
 
 def sentinel_mndwi(way):
-    b3 =gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray()
+    b3 =gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray().astype('float32')
     b12 =gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray()
     swir = np.repeat(b12, 2, axis=1).astype('float32')
     swir = np.repeat(swir, 2, axis=0).astype('float32')
     mndwi_sentinel = (b3 - swir) / (b3 + swir)
+    mndwi_sentinel[mndwi_sentinel<=0.2]=0
     plt.imshow(mndwi_sentinel)
     plt.show()
+    #print(np.count_nonzero(mndwi_sentinel>0)*100/1000000, 'square killometrs')
     return mndwi_sentinel
 
 def sentinel_ndfsi(way):
@@ -132,6 +178,17 @@ def sentinel_ndfsi(way):
     plt.show()
     return ndfsi_sentinel
 
+
+#разница водного игдекса, но при желании можно перековырять под другой
+def whater_difference(way1, way2):
+    shot1=sentinel_mndwi(way1)
+    shot2=sentinel_mndwi(way2)
+    differ_mas=np.zeros((shot1.shape[0], shot1.shape[1]))
+    #np.logical_and((shot2>0), (shot1>0), out=differ_mas)
+    #union(если хочешь увидеть пересечение водоебов)
+    np.logical_or((np.logical_and((shot2>0), (shot1==0))), np.logical_and((shot1>0), (shot2==0)),  out=differ_mas)
+    plt.imshow(differ_mas)
+    plt.show()
 #Блок дроче-Функций
 def fire_landsat(way):
     channels = get_names_landsat(way)
@@ -468,7 +525,8 @@ def main():
     "landsat_blue" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B2.TIF",}
     yuras_ways={'land_astrahan':"C:/Users/perminov_u/Downloads/Telegram Desktop/LC09_L2SP_168028_20220321_20220323_02_T1",
                 'sentinelZip': "C:/Users/perminov_u/Downloads/Telegram Desktop/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447_SAFE.zip",
-                'sentinel':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE"}
+                'sentinel':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE",
+                'anotherSentinel':"C:/Users/perminov_u/Downloads/S2A_MSIL1C_20230218T085021_N0509_R107_T37VDG_20230218T093702.SAFE"}
     #print(ndvi(ways["mod3"], ways["mod2"],show=True))
     #way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
@@ -476,7 +534,7 @@ def main():
     #fire_landsat(yuras_ways['land_astrahan'])
     #print(sentinel_ndsi(yuras_ways['sentinel']))
     #print(sentinel_mndwi(yuras_ways['sentinel']))
-    sentinel_ndfsi(yuras_ways['sentinel'])
+    whater_difference(yuras_ways['sentinel'], yuras_ways['anotherSentinel'])
     #print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
