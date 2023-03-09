@@ -162,7 +162,7 @@ def sentinel_mndwi(way):
     swir = np.repeat(b12, 2, axis=1).astype('float32')
     swir = np.repeat(swir, 2, axis=0).astype('float32')
     mndwi_sentinel = (b3 - swir) / (b3 + swir)
-    mndwi_sentinel[mndwi_sentinel<=0.2]=0
+    # mndwi_sentinel[mndwi_sentinel<=0.2]=None
     plt.imshow(mndwi_sentinel)
     plt.show()
     #print(np.count_nonzero(mndwi_sentinel>0)*100/1000000, 'square killometrs')
@@ -186,8 +186,8 @@ def whater_difference(way1, way2):
     differ_mas=np.zeros((shot1.shape[0], shot1.shape[1]))
     #np.logical_and((shot2>0), (shot1>0), out=differ_mas)
     #union(если хочешь увидеть пересечение водоебов)
-    np.logical_or((np.logical_and((shot2>0), (shot1==0))), np.logical_and((shot1>0), (shot2==0)),  out=differ_mas)
-    plt.imshow(differ_mas)
+    np.logical_or((np.logical_and((shot2>0), (shot1==0))), np.logical_and((shot1>0), (shot2==0)),  out=shot1)
+    plt.imshow(shot1)
     plt.show()
 #Блок дроче-Функций
 def fire_landsat(way):
@@ -526,7 +526,11 @@ def main():
     yuras_ways={'land_astrahan':"C:/Users/perminov_u/Downloads/Telegram Desktop/LC09_L2SP_168028_20220321_20220323_02_T1",
                 'sentinelZip': "C:/Users/perminov_u/Downloads/Telegram Desktop/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447_SAFE.zip",
                 'sentinel':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE",
-                'anotherSentinel':"C:/Users/perminov_u/Downloads/S2A_MSIL1C_20230218T085021_N0509_R107_T37VDG_20230218T093702.SAFE"}
+                'anotherSentinel':"C:/Users/perminov_u/Downloads/S2A_MSIL1C_20230218T085021_N0509_R107_T37VDG_20230218T093702.SAFE",
+                'sentinel_spb':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230301T090819_N0509_R050_T35UQS_20230301T094840.SAFE",
+                'sentinel_spb_1':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230225T093039_N0509_R136_T35VPG_20230225T100846.SAFE",
+                'sentinel_Kyiv':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230301T090819_N0509_R050_T36UUB_20230301T094840.SAFE",
+                'sentinel_Kyiv_1':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230225T093039_N0509_R136_T36VUM_20230225T100846.SAFE"}
     #print(ndvi(ways["mod3"], ways["mod2"],show=True))
     #way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
@@ -534,7 +538,11 @@ def main():
     #fire_landsat(yuras_ways['land_astrahan'])
     #print(sentinel_ndsi(yuras_ways['sentinel']))
     #print(sentinel_mndwi(yuras_ways['sentinel']))
-    whater_difference(yuras_ways['sentinel'], yuras_ways['anotherSentinel'])
+    # whater_difference(yuras_ways['sentinel'], yuras_ways['anotherSentinel'])
+    sentinel_mndwi(yuras_ways['sentinel_spb'])
+    sentinel_mndwi(yuras_ways['sentinel_spb_1'])
+    sentinel_mndwi(yuras_ways['sentinel_Kyiv'])
+    sentinel_mndwi(yuras_ways['sentinel_Kyiv_1'])
     #print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
