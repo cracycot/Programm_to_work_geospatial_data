@@ -518,7 +518,7 @@ def main():
     #fire_landsat(yuras_ways['land_astrahan'])
     #print(sentinel_ndsi(yuras_ways['sentinel']))
     #print(sentinel_mndwi(yuras_ways['sentinel']))
-    print(get_cord_lansat(ways["landsat_astr"]))
+    print(get_coords_list(open_clean_band("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2")))
     #print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
