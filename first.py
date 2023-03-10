@@ -76,9 +76,22 @@ def get_names_sentinel(way, band):
 def get_ways_sentinel(way):
     ways_slov = dict()
     for root,dirs,files in os.walk(way):
+        #print(files)
         for filenames in files:
-            if filenames[0] == "T":
+            if filenames[0] == "T" and (filenames[-7:-4] == "20m"):
+                if filenames[-11:-8] in ["B05", "B06", "B07", "B8A", "B11"]:
+                    ways_slov[filenames[-11:-8]] = root + "/" + filenames
+                    #print(root + "/" + filenames)
+            elif filenames[0] == "T" and (filenames[-7:-4] == "60m"):
+                if filenames[-11:-8] in ["B01", "B09"]:
+                    ways_slov[filenames[-11:-8]] = root + "/" + filenames
+            elif filenames[0] == "T" and (filenames[-7:-4] == "10m"):
+                if filenames[-11:-8] in ["B02", "B03", "B04", "B08"]:
+                    ways_slov[filenames[-11:-8]] = root + "/" + filenames
+            elif filenames[0] == "T":
                 ways_slov[filenames[-7:-4]] = root + "/" + filenames
+            #print(filenames[-7:-4], filenames[0])
+                #ways_slov[filenames[-7:-4]] = root + "/" + filenames
     return ways_slov
 
 #этот кал надо переделать, он медленный и через eoreader
@@ -159,9 +172,18 @@ def sentinel_mndwi(way):
     b12 =gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray()
     swir = np.repeat(b12, 2, axis=1).astype('float32')
     swir = np.repeat(swir, 2, axis=0).astype('float32')
+    # plt.imshow(swir)
+    # plt.show()
+    # plt.imshow(b3)
+    # plt.show()
     mndwi_sentinel = (b3 - swir) / (b3 + swir)
-    plt.imshow(mndwi_sentinel)
-    plt.show()
+    # plt.imshow(mndwi_sentinel)
+    # plt.show()
+    mas_output(mndwi_sentinel)
+    # mndwi_sentinel[mndwi_sentinel<0]=None
+    # mndwi_sentinel[mndwi_sentinel>=0]=1
+    # plt.imshow(mndwi_sentinel)
+    # plt.show()
     return mndwi_sentinel
 
 def sentinel_ndfsi(way):
@@ -174,6 +196,27 @@ def sentinel_ndfsi(way):
     plt.show()
     return ndfsi_sentinel
 
+def whater_difference(way1, way2):
+    shot1=sentinel_mndwi(way1)
+    shot2=sentinel_mndwi(way2)
+    c=np.zeros((shot1.shape[1], shot1.shape[0]))
+    shot1_coordinates=list(map(list, np.where(shot1==1)))
+    shot2_coordinates=list(map(list, np.where(shot2==1)))
+    for i in range(len(shot1_coordinates[0])):
+        np.logical_and((shot1[shot1_coordinates[0][i]][shot1_coordinates[1][i]]==1), (shot2[shot2_coordinates[0][np.where(shot2_coordinates[0]==shot1[0][i])]][shot2_coordinates[1][np.where(shot2_coordinates[1]==shot1[1][i])]]), out=c)
+    plt.imshow(c)
+    plt.show()
+#whater_difference
+# def whater_difference(way1, way2):
+#     shot1=sentinel_mndwi(way1)
+#     shot2=sentinel_mndwi(way2)
+#     differ_mas=np.zeros((shot1.shape[0], shot1.shape[1]))
+#     np.logical_and((shot1>0), ())
+#     #np.logical_and((shot2>0), (shot1>0), out=differ_mas)
+#     #union(если хочешь увидеть пересечение водоебов)
+#     np.logical_or((np.logical_and((shot2>0), (shot1==0))), np.logical_and((shot1>0), (shot2==0)),  out=shot1)
+#     plt.imshow(shot1)
+#     plt.show()
 #Блок дроче-Функций
 def fire_landsat(way):
     channels = get_names_landsat(way)
@@ -507,7 +550,8 @@ def main():
     "landsat_5" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B5.TIF",
     "landsat_red" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B4.TIF",
     "landsat_green" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B3.TIF",
-    "landsat_blue" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B2.TIF",}
+    "landsat_blue" : "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B2.TIF",
+    "sentinel_astr" : "/Users/kirilllesniak/Downloads/S2A_MSIL2A_20221018T065901_N0400_R063_T41TLM_20221018T102202.SAFE",}
     yuras_ways={'land_astrahan':"C:/Users/perminov_u/Downloads/Telegram Desktop/LC09_L2SP_168028_20220321_20220323_02_T1",
                 'sentinelZip': "C:/Users/perminov_u/Downloads/Telegram Desktop/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447_SAFE.zip",
                 'sentinel':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE"}
@@ -518,7 +562,9 @@ def main():
     #fire_landsat(yuras_ways['land_astrahan'])
     #print(sentinel_ndsi(yuras_ways['sentinel']))
     #print(sentinel_mndwi(yuras_ways['sentinel']))
-    print(get_coords_list(open_clean_band("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2")))
+   #whater_difference(ways['sentinel_astr'], ways['sentinel_astr'])
+    sentinel_mndwi(ways["sentinel_astr"])
+    #print(get_coords_list(open_clean_band("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2"))["x"][0][0])
     #print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
