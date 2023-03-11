@@ -81,7 +81,6 @@ def get_ways_sentinel(way):
             if filenames[0] == "T" and (filenames[-7:-4] == "20m"):
                 if filenames[-11:-8] in ["B05", "B06", "B07", "B8A", "B11"]:
                     ways_slov[filenames[-11:-8]] = root + "/" + filenames
-                    #print(root + "/" + filenames)
             elif filenames[0] == "T" and (filenames[-7:-4] == "60m"):
                 if filenames[-11:-8] in ["B01", "B09"]:
                     ways_slov[filenames[-11:-8]] = root + "/" + filenames
@@ -90,10 +89,7 @@ def get_ways_sentinel(way):
                     ways_slov[filenames[-11:-8]] = root + "/" + filenames
             elif filenames[0] == "T":
                 ways_slov[filenames[-7:-4]] = root + "/" + filenames
-            #print(filenames[-7:-4], filenames[0])
-                #ways_slov[filenames[-7:-4]] = root + "/" + filenames
     return ways_slov
-
 #этот кал надо переделать, он медленный и через eoreader
 def get_cordinates_sentinel(file, x, y):
     return [float(file[x][y].coords['x']), float(file[x][y].coords['y'])]
@@ -564,7 +560,7 @@ def main():
     #print(sentinel_mndwi(yuras_ways['sentinel']))
    #whater_difference(ways['sentinel_astr'], ways['sentinel_astr'])
     sentinel_mndwi(ways["sentinel_astr"])
-    #print(get_coords_list(open_clean_band("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2"))["x"][0][0])
+    print(get_coords_list(open_clean_band("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2"))["x"][0][0])
     #print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
