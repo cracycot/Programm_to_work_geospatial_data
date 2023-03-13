@@ -78,9 +78,22 @@ def get_names_sentinel(way, band):
 def get_ways_sentinel(way):
     ways_slov = dict()
     for root,dirs,files in os.walk(way):
+        #print(files)
         for filenames in files:
-            if filenames[0] == "T":
+            if filenames[0] == "T" and (filenames[-7:-4] == "20m"):
+                if filenames[-11:-8] in ["B05", "B06", "B07", "B8A", "B11"]:
+                    ways_slov[filenames[-11:-8]] = root + "/" + filenames
+                    #print(root + "/" + filenames)
+            elif filenames[0] == "T" and (filenames[-7:-4] == "60m"):
+                if filenames[-11:-8] in ["B01", "B09"]:
+                    ways_slov[filenames[-11:-8]] = root + "/" + filenames
+            elif filenames[0] == "T" and (filenames[-7:-4] == "10m"):
+                if filenames[-11:-8] in ["B02", "B03", "B04", "B08"]:
+                    ways_slov[filenames[-11:-8]] = root + "/" + filenames
+            elif filenames[0] == "T":
                 ways_slov[filenames[-7:-4]] = root + "/" + filenames
+            #print(filenames[-7:-4], filenames[0])
+                #ways_slov[filenames[-7:-4]] = root + "/" + filenames
     return ways_slov
 
 #этот кал надо переделать, он медленный и через eoreader
@@ -155,18 +168,31 @@ def sentinel_ndsi(way):
     plt.imshow(ndsi_sentinel)
     plt.show()
     return ndsi_sentinel
-
+import json
 def sentinel_mndwi(way):
     b3 =gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray().astype('float32')
     b12 =gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray()
     swir = np.repeat(b12, 2, axis=1).astype('float32')
     swir = np.repeat(swir, 2, axis=0).astype('float32')
     mndwi_sentinel = (b3 - swir) / (b3 + swir)
-    # mndwi_sentinel[mndwi_sentinel<=0.2]=None
+    mndwi_sentinel[np.logical_and((swir==0), (b3==0))]=0
+    mndwi_sentinel[mndwi_sentinel<0]=None
+    mndwi_sentinel[mndwi_sentinel>=0]=1
     plt.imshow(mndwi_sentinel)
     plt.show()
+    #"C:\Users\perminov_u\Desktop\image1.txt.txt"
     #print(np.count_nonzero(mndwi_sentinel>0)*100/1000000, 'square killometrs')
     return mndwi_sentinel
+
+def sentinel_ndgr(way):
+    b3 =gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray().astype('float32')
+    b4 =gdal.Open(get_ways_sentinel(way)['B04']).ReadAsArray().astype('float32')
+    ndgr_sentinel=(b3-b4)/(b3+b4)
+    # ndgr_sentinel[ndgr_sentinel<0]=0
+    # ndgr_sentinel[ndgr_sentinel>0]=1
+    plt.imshow(ndgr_sentinel)
+    plt.show()
+    return ndgr_sentinel
 
 def sentinel_ndfsi(way):
     b12 =gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray()
@@ -177,17 +203,26 @@ def sentinel_ndfsi(way):
     plt.imshow(ndfsi_sentinel)
     plt.show()
     return ndfsi_sentinel
+import sentinelhub
+#функция для облачков
+def sentinel_cloud(way):
+    ndgr=sentinel_ndgr(way)
+    b3 =gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray().astype('float32')
+    c=np.zeros((b3.shape[0], b3.shape[1]))
+    np.logical_and((np.logical_and((b3>0.175) ,(ndgr>0))), (b3>0.39), out=c)
 
-
-#разница водного игдекса, но при желании можно перековырять под другой
+    plt.imshow(c)
+    plt.show()
+    #разница водного игдекса, но при желании можно перековырять под другой
 def whater_difference(way1, way2):
     shot1=sentinel_mndwi(way1)
     shot2=sentinel_mndwi(way2)
-    differ_mas=np.zeros((shot1.shape[0], shot1.shape[1]))
-    #np.logical_and((shot2>0), (shot1>0), out=differ_mas)
-    #union(если хочешь увидеть пересечение водоебов)
-    np.logical_or((np.logical_and((shot2>0), (shot1==0))), np.logical_and((shot1>0), (shot2==0)),  out=shot1)
-    plt.imshow(shot1)
+    c=np.zeros((shot1.shape[1], shot1.shape[0]))
+    shot1_coordinates=list(map(list, np.where(shot1==1)))
+    shot2_coordinates=list(map(list, np.where(shot2==1)))
+    c[np.logical_or(np.logical_and((shot1==1),(shot2!=1)),np.logical_and((shot1!=1),(shot2==1)))]=1
+    print(c[100][100])
+    plt.imshow(c)
     plt.show()
 #Блок дроче-Функций
 def fire_landsat(way):
@@ -508,6 +543,12 @@ def fire(file_name, channel = 31):
     # 859nm / cos(3.14*solarZenith/180) выравнивание значений
     # print(rastr[i][j], end=" ")
     # print()
+import numpy as np
+
+
+def f(x_1, y_1, x_2, y_2, coord1, coord2):
+    return np.argmin(np.abs(x_2 - np.full(x_2.shape, x_1[coord1]))), np.argmin(
+        np.abs(y_2 - np.full(y_2.shape, y_1[coord2])))
 def main():
     ways = {"mod14" : "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD14.hdf",
     "mod3" : "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD03.hdf" ,
@@ -530,7 +571,9 @@ def main():
                 'sentinel_spb':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230301T090819_N0509_R050_T35UQS_20230301T094840.SAFE",
                 'sentinel_spb_1':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230225T093039_N0509_R136_T35VPG_20230225T100846.SAFE",
                 'sentinel_Kyiv':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230301T090819_N0509_R050_T36UUB_20230301T094840.SAFE",
-                'sentinel_Kyiv_1':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230225T093039_N0509_R136_T36VUM_20230225T100846.SAFE"}
+                'sentinel_Kyiv_1':"C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230225T093039_N0509_R136_T36VUM_20230225T100846.SAFE",
+                'sentinel_oral':"C:/Users/perminov_u/Downloads/S2A_MSIL2A_20220401T065621_N0400_R063_T40TGS_20220401T095213.SAFE",
+                'sentinel_oral1':"C:/Users/perminov_u/Downloads/S2A_MSIL2A_20221018T065901_N0400_R063_T41TLM_20221018T102202.SAFE"}
     #print(ndvi(ways["mod3"], ways["mod2"],show=True))
     #way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
@@ -539,10 +582,18 @@ def main():
     #print(sentinel_ndsi(yuras_ways['sentinel']))
     #print(sentinel_mndwi(yuras_ways['sentinel']))
     # whater_difference(yuras_ways['sentinel'], yuras_ways['anotherSentinel'])
-    sentinel_mndwi(yuras_ways['sentinel_spb'])
-    sentinel_mndwi(yuras_ways['sentinel_spb_1'])
-    sentinel_mndwi(yuras_ways['sentinel_Kyiv'])
-    sentinel_mndwi(yuras_ways['sentinel_Kyiv_1'])
+    # sentinel_mndwi(yuras_ways['sentinel_oral'])
+    #a=f(get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral'])['B03']))['x'],get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral'])['B03']))['y'],get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral1'])['B03']))['x'],get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral1'])['B03']))['y'],sentinel_mndwi(yuras_ways['sentinel_oral']), sentinel_mndwi(yuras_ways['sentinel_oral1']))
+    #print(a)
+    # sentinel_ndgr(yuras_ways['sentinel_spb'])
+    # a=get_coords_list(open_clean_band(yuras_ways['land_astrahan']))['x']
+    # a1=get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral'])['B08']))['x']
+    # print(a)
+    # print(a1)
+
+    sentinel_cloud(yuras_ways['sentinel_oral1'])
+    # sentinel_mndwi(yuras_ways['sentinel_oral'])
+    # sentinel_mndwi(yuras_ways['sentinel_oral1'])
     #print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
