@@ -14,11 +14,54 @@ import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
 from shapely.geometry import Point
 from shapely.plotting import plot_polygon, plot_points
+import rioxarray
+import rasterio
+import f
+
+# landsat_way = "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B4.TIF"
+# xds = rioxarray.open_rasterio(landsat_way)
+# print(xds)
+
 # def get_ways_sentinel(way):
+# a = [[0,0,0,0,0],
+#      [0,1,0,0,0],
+#      [1,0,0,0,1]]
+# b = [[0,0,0,1,0],
+#      [1,0,0,0,1],
+#      [1,0,0,0,0]]
+# a = np.array(a)
+# b = np.array(b)
+# a_out = np.where(a == 1)
+# b_out = np.where(b == 1)
+# z = np.array([[]])
+# coordinates=list(map(list, np.where(a==1)))
+# a1=[]
+# # for i in range(len(coordinates[0])):
+# #      a1.append(a[coordinates[0][i]][coordinates[1][i]])
+# # print(coordinates)
+# # print(a1)
+# print(a_out)
+# for i in range(a_out[0].shape[0]):
+#      c = np.array([])
+#      c = np.append(c, a_out[0][i])
+#      c = np.append(c, a_out[1][i])
+#      z = np.append(z, c)
+# g = np.array([[]])
+# for i in range(b_out[0].shape[0]):
+#      c = np.array([])
+#      c = np.append(b_out[0][i], c)
+#      c = np.append(b_out[1][i], c)
+#      g = np.append(c, g)
+# print(z, g)
+#
+
+
+#print(a_out, b_out)
+#c=np.logicaland((a==1), (B[полученные координаты]))
 #     way1 = way + "/HTML" + "/GRANULE"
 #     a = os.listdir(way1)
 #     print(a)
-#     for el in a:
+#     for el in a: 1
 #         if el != "QI_DATA":
 #             way1 += el.split(".")[0]
 #             way1 += "/"
@@ -32,15 +75,15 @@ from shapely.plotting import plot_polygon, plot_points
 #/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE
 #/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE
 #print(os.listdir("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE.DS_Store"))
-def get_ways_sentinell(way):
-    ways_slov = dict()
-    for root,dirs,files in os.walk(way):
-        for filenames in files:
-            if filenames[0] == "T":
-                ways_slov[filenames[-7:-4]] = root + "/" + filenames
-    return ways_slov
+# def get_ways_sentinell(way):
+#     ways_slov = dict()
+#     for root,dirs,files in os.walk(way):
+#         for filenames in files:
+#             if filenames[0] == "T":
+#                 ways_slov[filenames[-7:-4]] = root + "/" + filenames
+#     return ways_slov
 #print(gdal.Open('/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/T44QRJ_20230211T044929_B01.jp2'))
-print(gdal.Open(get_ways_sentinell("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE")["B08"]))
+# print(gdal.Open(get_ways_sentinell("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE")["B08"]))
 
 # start=time()
 # a = gdal.Open("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2").ReadAsArray()

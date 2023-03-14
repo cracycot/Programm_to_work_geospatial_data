@@ -79,7 +79,7 @@ def get_ways_sentinel(way):
         #print(files)
         for filenames in files:
             if filenames[0] == "T" and (filenames[-7:-4] == "20m"):
-                if filenames[-11:-8] in ["B05", "B06", "B07", "B8A", "B11"]:
+                if filenames[-11:-8] in ["B05", "B06", "B07", "B8A", "B11", "B12"]:
                     ways_slov[filenames[-11:-8]] = root + "/" + filenames
             elif filenames[0] == "T" and (filenames[-7:-4] == "60m"):
                 if filenames[-11:-8] in ["B01", "B09"]:
@@ -140,8 +140,8 @@ def mndwi(way):
     green=gdal.Open(channels['B2']).ReadAsArray().astype('float32')
     swir=gdal.Open(channels['B7']).ReadAsArray().astype('float32')
     mndwi_=(green-swir)/(green+swir)
-    plt.imshow(mndwi_)
-    plt.show()
+    # plt.imshow(mndwi_)
+    # plt.show()
     return mndwi_
 
 #Блок функций расчета индексов для sentinel 2
@@ -149,8 +149,8 @@ def sentinel_ndvi(way):
     nir=gdal.Open(get_ways_sentinel(way)['B08']).ReadAsArray()
     red=gdal.Open(get_ways_sentinel(way)['B04']).ReadAsArray()
     ndvi_sentinel=(nir-red)/(nir+red)
-    plt.imshow(ndvi_sentinel)
-    plt.show()
+    # plt.imshow(ndvi_sentinel)
+    # plt.show()
     return ndvi_sentinel
 
 def sentinel_ndsi(way):
@@ -159,8 +159,8 @@ def sentinel_ndsi(way):
     swir = np.repeat(b12, 2, axis=1).astype('float32')
     swir = np.repeat(swir, 2, axis=0).astype('float32')
     ndsi_sentinel = (b3 - swir) / (b3 + swir)
-    plt.imshow(ndsi_sentinel)
-    plt.show()
+    # plt.imshow(ndsi_sentinel)
+    # plt.show()
     return ndsi_sentinel
 
 def sentinel_mndwi(way):
@@ -181,6 +181,39 @@ def sentinel_mndwi(way):
     # plt.imshow(mndwi_sentinel)
     # plt.show()
     return mndwi_sentinel
+
+def sentinel_cloud(way):
+    print(get_ways_sentinel(way))
+    b7 = gdal.Open(get_ways_sentinel(way)['B12']).ReadAsArray().astype('float32')
+    b7_vs = np.repeat(b7, 2, axis=1).astype('float32')
+    b7 = np.repeat(b7_vs, 2, axis=0).astype('float32')
+    b6 = gdal.Open(get_ways_sentinel(way)['B06']).ReadAsArray().astype('float32')
+    b6_vs = np.repeat(b6, 2, axis=1).astype('float32')
+    b6 = np.repeat(b6_vs , 2, axis=0).astype('float32')
+    ndsi = sentinel_ndsi(way)
+    ndvi = sentinel_ndvi(way)
+    basic_test = np.zeros((ndsi.shape[0], ndsi.shape[1]))
+    bv = np.zeros((ndsi.shape[0], ndsi.shape[1]))
+    bv = np.logical_and(np.logical_and(b6 > 6500, ndsi < 0.8), ndvi < 0.8)
+    #basic_test =np.logical_and(( np.logical_and(np.logical_and(b7 > 0.03, ndsi < 0.8 ), ndvi < 0.8)), (b6>5000))
+    #basic_test[basic_test<5000]=0
+    plt.imshow(bv)
+    plt.show()
+    return basic_test
+def sentinel_ndgr(way):
+    b3 =gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray().astype('float32')
+    b4 =gdal.Open(get_ways_sentinel(way)['B04']).ReadAsArray().astype('float32')
+    b11 = gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray().astype("float32")
+    swir = np.repeat(b11, 2, axis=1).astype('float32')
+    swir = np.repeat(swir, 2, axis=0).astype('float32')
+    ndgr_sentinel=(b3-b4)/(b3+b4)
+    #a1 = np.zeros((b3.shape[0], b3.shape[1]))
+    #a1= np.logical_and(swir > 0.2, np.logical_and(b3 > 0.39, np.logical_and(b3 > 0.175, ndgr_sentinel > 0)))
+    ndgr_sentinel[ndgr_sentinel<0]=0
+    ndgr_sentinel[ndgr_sentinel>0]=1
+    #plt.imshow(a1)
+    #plt.show()
+    return ndgr_sentinel
 
 def sentinel_ndfsi(way):
     b12 =gdal.Open(get_ways_sentinel(way)['B11']).ReadAsArray()
@@ -532,13 +565,18 @@ def fire(file_name, channel = 31):
     # 859nm / cos(3.14*solarZenith/180) выравнивание значений
     # print(rastr[i][j], end=" ")
     # print()
+def f(x_1, y_1, x_2, y_2, coord1, coord2):
+    return np.argmin(np.abs(x_2 - np.full(x_2.shape, x_1[coord1]))), np.argmin(
+        np.abs(y_2 - np.full(y_2.shape, y_1[coord2])))
 def main():
     ways = {"mod14" : "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD14.hdf",
     "mod3" : "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD03.hdf" ,
     "mod2" : "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD021KM.hdf",
+    "lad_gar" : "/Users/kirilllesniak/Downloads/Landsat 8 2017",
     "mod2_1km" : "HDF4_EOS:EOS_SWATH:/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD021KM.hdf:MODIS_SWATH_Type_L1B:EV_1KM_RefSB_Uncert_Indexes",
     #"mod021_1km" :"HDF4_EOS:EOS_SWATH:/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD021KM.hdf:MODIS_SWATH_Type_L1B:EV_1KM_Emissive",
     "mod03":"/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD03.hdf",
+    "sentinel_bez_CLOUD" : "/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE",
     "mod021_astrahan":"/Users/kirilllesniak/Downloads/hdf-sort/1/20220310_092621_TERRA_MOD021KM.hdf",
     "mod021_kaliningrad":"/Users/kirilllesniak/Downloads/hdf-sort/1/20220310_092621_TERRA_MOD021KM.hdf",
     "landsat_astr" : "/Users/kirilllesniak/Downloads/LC09_L2SP_168028_20220321_20220323_02_T1",
@@ -558,9 +596,10 @@ def main():
     #fire_landsat(yuras_ways['land_astrahan'])
     #print(sentinel_ndsi(yuras_ways['sentinel']))
     #print(sentinel_mndwi(yuras_ways['sentinel']))
-   #whater_difference(ways['sentinel_astr'], ways['sentinel_astr'])
-    sentinel_mndwi(ways["sentinel_astr"])
-    print(get_coords_list(open_clean_band("/Users/kirilllesniak/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE/HTML/GRANULE/L1C_T44QRJ_A030990_20230211T050134/IMG_DATA/T44QRJ_20230211T044929_B03.jp2"))["x"][0][0])
+    #whater_difference(ways['sentinel_astr'], ways['sentinel_astr'])
+    #sentinel_mndwi(ways["sentinel_astr"])
+    #print(get_coords_list(open_clean_band("/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B3.TIF")))
+    sentinel_cloud(ways["sentinel_bez_CLOUD"])
     #print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
     #print(fire_landsat(yuras_ways['land_astrahan']))
     #get_L(ways['mod2'], 'EV_1KM_Emissive')
