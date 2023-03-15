@@ -22,39 +22,56 @@ from eoreader.bands import *
 import rasterio
 from time import time
 from sentinelhub import geo_utils, BBox, bbox_to_dimensions, CRS
+import xarray
 
 
 
 # получение координат для sentinel, гордость моего кота(юриного)
-def convert_to_deciminal_degree(degree):
-    a = float(degree[0:degree.find('d')])
-    b = float(degree[degree.find('d') + 1:degree.find('\'')])
-    c = float(degree[degree.find('\'') + 1:degree.find('"')])
-    return (a + (b / 60) + (c / 3600))
+# def convert_to_deciminal_degree(degree):
+#     a = float(degree[0:degree.find('d')])
+#     b = float(degree[degree.find('d') + 1:degree.find('\'')])
+#     c = float(degree[degree.find('\'') + 1:degree.find('"')])
+#     return (a + (b / 60) + (c / 3600))
 
+from pyproj import Proj, transform
 
 def sentinel_coordinates(way):
-    info = gdal.Info(get_ways_sentinel(way)['B08'])
-    Up_Left = info[
-              info.find("(", info.find("(", info.find("Upper Left")) + 1):info.find("\n",
-                                                                                    info.find("Upper Left"))].replace(
-        '(', '').replace(')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
-    Lower_Right = info[info.find("(", info.find("(", info.find("Lower Right")) + 1):info.find("\n", info.find(
-        "Lower Right"))].replace('(', '').replace(')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
-    coords = [convert_to_deciminal_degree(Up_Left[0]), convert_to_deciminal_degree(Up_Left[1]),
-              convert_to_deciminal_degree(Lower_Right[0]), convert_to_deciminal_degree(Lower_Right[1])]
-    resolution = 40
-    loc_bbox = BBox(bbox=coords, crs=CRS.WGS84)
-    loc_size = bbox_to_dimensions(loc_bbox, resolution=resolution)
-    bb_utm = geo_utils.to_utm_bbox(loc_bbox)
-    transf = bb_utm.get_transform_vector(resx=resolution, resy=resolution)
-    pix_lat = np.array(np.arange(0, loc_size[1]))
-    lats = np.array([pix_lat] * loc_size[0]).transpose()
-    pix_lon = np.array(np.arange(0, loc_size[0]))
-    lons = np.array([pix_lon] * loc_size[1])
-    lon, lat = geo_utils.pixel_to_utm(lats, lons, transf)
-    lon_degrees, lat_degrees = geo_utils.to_wgs84(lon, lat, bb_utm.crs)
-    return {'lat': np.array(lat_degrees), 'lon': np.array(lon_degrees)}
+    way=get_ways_sentinel(way)['B08']
+    rastr = xarray.open_dataset(way)
+    info=gdal.Info(way)
+    cordsys=info[info.find(',', info.find('ID["EPSG"', info.find('ORDER[2]')))+1:info.find(']]', info.find('ID["EPSG"', info.find('ORDER[2]')))]
+    lat = np.array(rastr['x'])
+    lon = np.array(rastr['y'])
+    from pyproj import Proj, transform
+    lonlat = Proj(init="epsg:"+str(cordsys))
+    sphmerc = Proj(init="epsg:4326")
+    ll = (lat, lon)
+    sm = np.array(transform(lonlat, sphmerc, *ll))
+    return {'lat':sm[0], 'lon':sm[1]}
+# def sentinel_coordinates(way):
+#     sentinel_coordinates1(way)
+#     info = gdal.Info(get_ways_sentinel(way)['B08'])
+#     # print(info)
+#     Up_Left = info[
+#               info.find("(", info.find("(", info.find("Upper Left")) + 1):info.find("\n",
+#                                                                                     info.find("Upper Left"))].replace(
+#         '(', '').replace(')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
+#     Lower_Right = info[info.find("(", info.find("(", info.find("Lower Right")) + 1):info.find("\n", info.find(
+#         "Lower Right"))].replace('(', '').replace(')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
+#     coords = [convert_to_deciminal_degree(Up_Left[0]), convert_to_deciminal_degree(Up_Left[1]),
+#               convert_to_deciminal_degree(Lower_Right[0]), convert_to_deciminal_degree(Lower_Right[1])]
+#     resolution = 40
+#     loc_bbox = BBox(bbox=coords, crs=CRS.WGS84)
+#     loc_size = bbox_to_dimensions(loc_bbox, resolution=resolution)
+#     bb_utm = geo_utils.to_utm_bbox(loc_bbox)
+#     transf = bb_utm.get_transform_vector(resx=resolution, resy=resolution)
+#     pix_lat = np.array(np.arange(0, loc_size[1]))
+#     lats = np.array([pix_lat] * loc_size[0]).transpose()
+#     pix_lon = np.array(np.arange(0, loc_size[0]))
+#     lons = np.array([pix_lon] * loc_size[1])
+#     lon, lat = geo_utils.pixel_to_utm(lats, lons, transf)
+#     lon_degrees, lat_degrees = geo_utils.to_wgs84(lon, lat, bb_utm.crs)
+#     return {'lat': np.array(lat_degrees), 'lon': np.array(lon_degrees)}
 
     # воимя отца сына и святого дуба помоги этому коду заработаать
 
@@ -81,7 +98,7 @@ def get_ways_sentinel(way):
         # print(files)
         for filenames in files:
             if filenames[0] == "T" and (filenames[-7:-4] == "20m"):
-                if filenames[-11:-8] in ["B05", "B06", "B07", "B8A", "B11"]:
+                if filenames[-11:-8] in ["B05", "B06", "B07", "B8A", "B11", "B12"]:
                     ways_slov[filenames[-11:-8]] = root + "/" + filenames
                     # print(root + "/" + filenames)
             elif filenames[0] == "T" and (filenames[-7:-4] == "60m"):
@@ -225,13 +242,23 @@ import sentinelhub
 
 # функция для облачков
 def sentinel_cloud(way):
-    ndgr = sentinel_ndgr(way)
-    b3 = gdal.Open(get_ways_sentinel(way)['B03']).ReadAsArray().astype('float32')
-    c = np.zeros((b3.shape[0], b3.shape[1]))
-    np.logical_and((np.logical_and((b3 > 0.175), (ndgr > 0))), (b3 > 0.39), out=c)
-
-    plt.imshow(c)
+    print(get_ways_sentinel(way))
+    b7 = gdal.Open(get_ways_sentinel(way)['B12']).ReadAsArray().astype('float32')
+    b7_vs = np.repeat(b7, 2, axis=1).astype('float32')
+    b7 = np.repeat(b7_vs, 2, axis=0).astype('float32')
+    b6 = gdal.Open(get_ways_sentinel(way)['B06']).ReadAsArray().astype('float32')
+    b6_vs = np.repeat(b6, 2, axis=1).astype('float32')
+    b6 = np.repeat(b6_vs , 2, axis=0).astype('float32')
+    ndsi = sentinel_ndsi(way)
+    ndvi = sentinel_ndvi(way)
+    basic_test = np.zeros((ndsi.shape[0], ndsi.shape[1]))
+    bv = np.zeros((ndsi.shape[0], ndsi.shape[1]))
+    bv = np.logical_and(np.logical_and(b6 > 6500, ndsi < 0.8), ndvi < 0.8)
+    #basic_test =np.logical_and(( np.logical_and(np.logical_and(b7 > 0.03, ndsi < 0.8 ), ndvi < 0.8)), (b6>5000))
+    #basic_test[basic_test<5000]=0
+    plt.imshow(bv)
     plt.show()
+    return basic_test
     # разница водного игдекса, но при желании можно перековырять под другой
 
 
@@ -660,14 +687,18 @@ def main():
     # a1=get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral'])['B08']))['x']
     # print(a)
     # print(a1)
-    start = time()
-    shot1 = sentinel_coordinates(yuras_ways['sentinel_oral1'])
-    shot2 = sentinel_coordinates(yuras_ways['sentinel_oral'])
-    print(f(shot1['lat'][0],shot1['lon'][0], shot2['lat'][0], shot2['lon'][0], 46.88962509, 59.56566092))
-    print(shot2['lat'])
-    print(shot2['lon'])
-    print(shot1['lat'])
-    print(shot1['lon'])
+    # start = time()
+    # sentinel_cloud(yuras_ways['sentinel_oral1'])
+    cords1 = sentinel_coordinates(yuras_ways['sentinel_oral'])
+    cords=sentinel_coordinates(yuras_ways['sentinel_oral1'])
+    print(cords, cords1)
+    # shot1 = sentinel_coordinates(yuras_ways['sentinel_oral1'])
+    # shot2 = sentinel_coordinates(yuras_ways['sentinel_oral'])
+    # print(f(shot1['lat'][0],shot1['lon'][0], shot2['lat'][0], shot2['lon'][0], 46.88962509, 59.56566092))
+    # print(shot2['lat'])
+    # print(shot2['lon'])
+    # print(shot1['lat'])
+    # print(shot1['lon'])
 
     # sentinel_cloud(yuras_ways['sentinel_oral1'])
     # sentinel_mndwi(yuras_ways['sentinel_oral'])
