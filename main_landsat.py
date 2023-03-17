@@ -1,53 +1,64 @@
-import numpy
-from pyhdf import HDF
+# import numpy
+# from pyhdf import HDF
 from pyhdf.SD import SD, SDC
 from osgeo import gdal
 from osgeo import ogr
-from glob import glob
-import geopandas as gpd
-import xarray as xr
-import rioxarray as rxr
-from osgeo import osr
-from osgeo import gdal_array
-from osgeo import gdalconst
-import h5py
+# from glob import glob
+# import geopandas as gpd
+# import xarray as xr
+# import rioxarray as rxr
+# from osgeo import osr
+# from osgeo import gdal_array
+# from osgeo import gdalconst
+# import h5py
 import os
-import numpy as np
+# import numpy as np
 import math
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
 from shapely.geometry import Point
-from eoreader.reader import Reader
-from eoreader.bands import *
-import rasterio
+# from eoreader.reader import Reader
+# from eoreader.bands import *
+# import rasterio
 from time import time
-from sentinelhub import geo_utils, BBox, bbox_to_dimensions, CRS
+# from sentinelhub import geo_utils, BBox, bbox_to_dimensions, CRS
 import xarray
+import cv2
+from PIL import Image
 
-
-
+def save_as_tiff(massive, way, name):
+    Image.fromarray(massive).save(way+name+".tif")
 # получение координат для sentinel, гордость моего кота(юриного)
-# def convert_to_deciminal_degree(degree):
-#     a = float(degree[0:degree.find('d')])
-#     b = float(degree[degree.find('d') + 1:degree.find('\'')])
-#     c = float(degree[degree.find('\'') + 1:degree.find('"')])
-#     return (a + (b / 60) + (c / 3600))
+def convert_to_deciminal_degree(degree):
+    a = float(degree[0:degree.find('d')])
+    b = float(degree[degree.find('d') + 1:degree.find('\'')])
+    c = float(degree[degree.find('\'') + 1:degree.find('"')])
+    return (a + (b / 60) + (c / 3600))
+
 
 from pyproj import Proj, transform
 
+
 def sentinel_coordinates(way):
-    way=get_ways_sentinel(way)['B08']
+    import warnings
+    warnings.filterwarnings('ignore')
+    way = get_ways_sentinel(way)['B08']
     rastr = xarray.open_dataset(way)
-    info=gdal.Info(way)
-    cordsys=info[info.find(',', info.find('ID["EPSG"', info.find('ORDER[2]')))+1:info.find(']]', info.find('ID["EPSG"', info.find('ORDER[2]')))]
+    info = gdal.Info(way)
+    cordsys = info[info.find(',', info.find('ID["EPSG"', info.find('ORDER[2]'))) + 1:info.find(']]',
+                                                                                               info.find('ID["EPSG"',
+                                                                                                         info.find(
+                                                                                                             'ORDER[2]')))]
     lat = np.array(rastr['x'])
     lon = np.array(rastr['y'])
     from pyproj import Proj, transform
-    lonlat = Proj(init="epsg:"+str(cordsys))
+    lonlat = Proj(init="epsg:" + str(cordsys))
     sphmerc = Proj(init="epsg:4326")
     ll = (lat, lon)
     sm = np.array(transform(lonlat, sphmerc, *ll))
-    return {'lat':sm[0], 'lon':sm[1]}
+    return {'lat': sm[0], 'lon': sm[1]}
+
+
 # def sentinel_coordinates(way):
 #     sentinel_coordinates1(way)
 #     info = gdal.Info(get_ways_sentinel(way)['B08'])
@@ -73,7 +84,7 @@ def sentinel_coordinates(way):
 #     lon_degrees, lat_degrees = geo_utils.to_wgs84(lon, lat, bb_utm.crs)
 #     return {'lat': np.array(lat_degrees), 'lon': np.array(lon_degrees)}
 
-    # воимя отца сына и святого дуба помоги этому коду заработаать
+# воимя отца сына и святого дуба помоги этому коду заработаать
 
 
 # Блок функций для открытия снимков
@@ -102,7 +113,7 @@ def get_ways_sentinel(way):
                     ways_slov[filenames[-11:-8]] = root + "/" + filenames
                     # print(root + "/" + filenames)
             elif filenames[0] == "T" and (filenames[-7:-4] == "60m"):
-                if filenames[-11:-8] in ["B01", "B09"]:
+                if filenames[-11:-8] in ["B01", "B09", 'B10']:
                     ways_slov[filenames[-11:-8]] = root + "/" + filenames
             elif filenames[0] == "T" and (filenames[-7:-4] == "10m"):
                 if filenames[-11:-8] in ["B02", "B03", "B04", "B08"]:
@@ -126,8 +137,6 @@ def LatLon_from_XY(ProductSceneGeoCoding, x, y):
     latitude = geopos.getLat()
     longitude = geopos.getLon()
     return latitude, longitude
-
-
 
 
 # Блок функций расчета индексов для landsat 8
@@ -206,10 +215,10 @@ def sentinel_mndwi(way):
     swir = np.repeat(swir, 2, axis=0).astype('float32')
     mndwi_sentinel = (b3 - swir) / (b3 + swir)
     mndwi_sentinel[np.logical_and((swir == 0), (b3 == 0))] = 0
-    # mndwi_sentinel[mndwi_sentinel<0]=None
-    # mndwi_sentinel[mndwi_sentinel>=0]=1
-    plt.imshow(mndwi_sentinel)
-    plt.show()
+    mndwi_sentinel[mndwi_sentinel<0]=None
+    mndwi_sentinel[mndwi_sentinel>=0]=1
+    # plt.imshow(mndwi_sentinel)
+    # plt.show()
     # "C:\Users\perminov_u\Desktop\image1.txt.txt"
     # print(np.count_nonzero(mndwi_sentinel>0)*100/1000000, 'square killometrs')
     return mndwi_sentinel
@@ -237,41 +246,122 @@ def sentinel_ndfsi(way):
     return ndfsi_sentinel
 
 
-import sentinelhub
+# import sentinelhub
 
 
 # функция для облачков
-def sentinel_cloud(way):
-    print(get_ways_sentinel(way))
-    b7 = gdal.Open(get_ways_sentinel(way)['B12']).ReadAsArray().astype('float32')
-    b7_vs = np.repeat(b7, 2, axis=1).astype('float32')
-    b7 = np.repeat(b7_vs, 2, axis=0).astype('float32')
-    b6 = gdal.Open(get_ways_sentinel(way)['B06']).ReadAsArray().astype('float32')
-    b6_vs = np.repeat(b6, 2, axis=1).astype('float32')
-    b6 = np.repeat(b6_vs , 2, axis=0).astype('float32')
-    ndsi = sentinel_ndsi(way)
-    ndvi = sentinel_ndvi(way)
-    basic_test = np.zeros((ndsi.shape[0], ndsi.shape[1]))
-    bv = np.zeros((ndsi.shape[0], ndsi.shape[1]))
-    bv = np.logical_and(np.logical_and(b6 > 6500, ndsi < 0.8), ndvi < 0.8)
-    #basic_test =np.logical_and(( np.logical_and(np.logical_and(b7 > 0.03, ndsi < 0.8 ), ndvi < 0.8)), (b6>5000))
-    #basic_test[basic_test<5000]=0
-    plt.imshow(bv)
-    plt.show()
-    return basic_test
-    # разница водного игдекса, но при желании можно перековырять под другой
+
+# разница водного игдекса, но при желании можно перековырять под другой
+def sentinel_corner_coordinates1(way):
+    info = gdal.Info(get_ways_sentinel(way)['B08'])
+    corners = ['Upper Left', 'Upper Right', 'Lower Left']
+    corns_cords = []
+    for i in corners:
+        temp = info[info.find("(", info.find("(", info.find(i)) + 1):info.find("\n", info.find(i))].replace('(',
+                                                                                                            '').replace(
+            ')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
+        corns_cords.append([temp[0], temp[1]])
+    for i in range(3):
+        corns_cords[i] = [convert_to_deciminal_degree(corns_cords[i][0]),
+                          convert_to_deciminal_degree(corns_cords[i][1])]
+    return corns_cords
+def sentinel_corner_coordinates(cords):
+    # info = gdal.Info(get_ways_sentinel(way)['B08'])
+    # corners = ['Upper Left', 'Upper Right', 'Lower Left']
+    # corns_cords = []
+    # for i in corners:
+    #     temp = info[info.find("(", info.find("(", info.find(i)) + 1):info.find("\n", info.find(i))].replace('(',
+    #                                                                                                         '').replace(
+    #         ')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
+    #     corns_cords.append([temp[0], temp[1]])
+    # for i in range(3):
+    #     corns_cords[i] = [convert_to_deciminal_degree(corns_cords[i][0]),
+    #                       convert_to_deciminal_degree(corns_cords[i][1])]
+    # return corns_cords
+    return [[cords['lat'][0], cords['lon'][0]], [cords['lat'][-1], cords['lon'][0]], [cords['lat'][0], cords['lon'][-1]]]
 
 
-def whater_difference(way1, way2):
-    shot1 = sentinel_mndwi(way1)
-    shot2 = sentinel_mndwi(way2)
-    c = np.zeros((shot1.shape[1], shot1.shape[0]))
-    shot1_coordinates = list(map(list, np.where(shot1 == 1)))
-    shot2_coordinates = list(map(list, np.where(shot2 == 1)))
-    c[np.logical_or(np.logical_and((shot1 == 1), (shot2 != 1)), np.logical_and((shot1 != 1), (shot2 == 1)))] = 1
-    print(c[100][100])
+def get_centeres(way):
+    info = gdal.Info(get_ways_sentinel(way)['B08'])
+    print(info)
+    temp = info[info.find("(", info.find("(", info.find('Center')) + 1):info.find("\n", info.find('Center'))].replace(
+        '(', '').replace(')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
+    temp = {'lat': convert_to_deciminal_degree(temp[0]), 'lon': convert_to_deciminal_degree(temp[1])}
+    return temp
+
+
+def closer_value_search(mas, value):
+    coef = 1
+    min = np.min(mas)
+    max = np.max(mas)
+    anw = 0
+    if mas[0] < mas[-1]:
+        if value < min:
+            value = min + (min - value)
+            coef = -1
+        if value > max:
+            anw = mas.shape[0]
+            value = min + (value - max)
+    if mas[0] > mas[-1]:
+        if value < min:
+            anw = mas.shape[0]
+            value = max - (min - value)
+        if value > max:
+            coef = -1
+            value = max - (value - max)
+    tmp = np.abs(mas - value)
+    anw += np.where(tmp == tmp.min())[0][0]
+    return anw * coef
+
+def whater_difference(way, way1):
+    center = get_centeres(way)
+    center1 = get_centeres(way1)
+    cords = sentinel_coordinates(way)
+    if center==center1:
+        corns1 = sentinel_corner_coordinates(cords)
+    else:
+        corns1=sentinel_corner_coordinates1(way)
+    points = []
+    for i in range(3):
+        points.append([closer_value_search(cords['lat'], corns1[i][0] + (center['lat'] - center1['lat'])),
+                       closer_value_search(cords['lon'], corns1[i][1] + (center['lon'] - center1['lon']))])
+    rastr = sentinel_mndwi(way)
+    rastr11 = sentinel_mndwi(way1)
+    rows, cols = rastr.shape[:2]
+    transform_matrix = cv2.getAffineTransform(np.float32([[0, 0], [rows - 1, 0], [0, cols - 1]]), np.float32(points))
+    rastr1 = cv2.warpAffine(rastr, transform_matrix, (cols, rows))
+    c=np.zeros((rastr11.shape[0], rastr11.shape[1]))
+    c[np.logical_and((rastr1!=0), (rastr1!=1))]=1
+    # (np.logical_and((rastr11 != 0), (rastr11 != 1)), (rastr1 == 1)),
+    np.logical_or(np.logical_and(np.logical_and((rastr1!=0), (rastr1!=1)), (rastr11==1)), np.logical_and(np.logical_and((rastr11!=0), (rastr11!=1)), (rastr1==1)), out=c)
     plt.imshow(c)
     plt.show()
+    return c
+
+
+# def whater_difference(way, way1):
+#     center = get_centeres(way)
+#     center1 = get_centeres(way1)
+#     cords = sentinel_coordinates(way)
+#     if center==center1:
+#         corns1 = sentinel_corner_coordinates(cords)
+#     else:
+#         corns1=sentinel_corner_coordinates1(way)
+#     points = []
+#     for i in range(3):
+#         points.append([closer_value_search(cords['lat'], corns1[i][0] + (center['lat'] - center1['lat'])),
+#                        closer_value_search(cords['lon'], corns1[i][1] + (center['lon'] - center1['lon']))])
+#     print(cords)
+#     print(corns1)
+#     print(points)
+#     rastr = gdal.Open(get_ways_sentinel(way)['B08']).ReadAsArray()
+#     rastr11 = gdal.Open(get_ways_sentinel(way1)['B08']).ReadAsArray()
+#     rows, cols = rastr.shape[:2]
+#     transform_matrix = cv2.getAffineTransform(np.float32([[0, 0], [rows - 1, 0], [0, cols - 1]]), np.float32(points))
+#     rastr1 = cv2.warpAffine(rastr, transform_matrix, (cols, rows))
+#     c = np.dstack([normalize(rastr11), normalize(rastr1), normalize(rastr1)])
+#     plt.imshow(c)
+#     plt.show()
 
 
 # Блок дроче-Функций
@@ -670,7 +760,12 @@ def main():
         'sentinel_Kyiv': "C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230301T090819_N0509_R050_T36UUB_20230301T094840.SAFE",
         'sentinel_Kyiv_1': "C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230225T093039_N0509_R136_T36VUM_20230225T100846.SAFE",
         'sentinel_oral': "C:/Users/perminov_u/Downloads/S2A_MSIL2A_20220401T065621_N0400_R063_T40TGS_20220401T095213.SAFE",
-        'sentinel_oral1': "C:/Users/perminov_u/Downloads/S2A_MSIL2A_20221018T065901_N0400_R063_T41TLM_20221018T102202.SAFE"}
+        'sentinel_oral1': "C:/Users/perminov_u/Downloads/S2A_MSIL2A_20221018T065901_N0400_R063_T41TLM_20221018T102202.SAFE",
+        'hach_ozero':"C:/Users/perminov_u/Downloads/S2B_MSIL2A_20221025T055919_N0400_R091_T43TDM_20221025T072143.SAFE",
+        'hach_ozero1':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230314T055639_N0509_R091_T43TDM_20230314T074739.SAFE",
+        'gay_ozero':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230218T075959_N0509_R035_T36NWF_20230220T131038.SAFE",
+        'gay_ozero2':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20221031T080009_N0400_R035_T36NWF_20221031T094754.SAFE"}
+    default_save_way="C:/Users/perminov_u/Desktop/"
     # print(ndvi(ways["mod3"], ways["mod2"],show=True))
     # way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     # print(gdal.Info(gdal.Info(ways['mod2']+way)))
@@ -689,9 +784,10 @@ def main():
     # print(a1)
     # start = time()
     # sentinel_cloud(yuras_ways['sentinel_oral1'])
-    cords1 = sentinel_coordinates(yuras_ways['sentinel_oral'])
-    cords=sentinel_coordinates(yuras_ways['sentinel_oral1'])
-    print(cords, cords1)
+    # sentinel_cloud(yuras_ways["sentinel_Kyiv"])
+    save_as_tiff(whater_difference(yuras_ways['sentinel_oral1'], yuras_ways['sentinel_oral']),default_save_way, "sentinel_oral_ndvi")
+    # cords = sentinel_coordinates(yuras_ways['sentinel_oral1'])
+    # print(cords, cords1)
     # shot1 = sentinel_coordinates(yuras_ways['sentinel_oral1'])
     # shot2 = sentinel_coordinates(yuras_ways['sentinel_oral'])
     # print(f(shot1['lat'][0],shot1['lon'][0], shot2['lat'][0], shot2['lon'][0], 46.88962509, 59.56566092))
