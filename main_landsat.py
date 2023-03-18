@@ -313,32 +313,6 @@ def closer_value_search(mas, value):
     anw += np.where(tmp == tmp.min())[0][0]
     return anw * coef
 
-def whater_difference(way, way1):
-    center = get_centeres(way)
-    center1 = get_centeres(way1)
-    cords = sentinel_coordinates(way)
-    if center==center1:
-        corns1 = sentinel_corner_coordinates(cords)
-    else:
-        corns1=sentinel_corner_coordinates1(way)
-    points = []
-    for i in range(3):
-        points.append([closer_value_search(cords['lat'], corns1[i][0] + (center['lat'] - center1['lat'])),
-                       closer_value_search(cords['lon'], corns1[i][1] + (center['lon'] - center1['lon']))])
-    rastr = sentinel_mndwi(way)
-    rastr11 = sentinel_mndwi(way1)
-    rows, cols = rastr.shape[:2]
-    transform_matrix = cv2.getAffineTransform(np.float32([[0, 0], [rows - 1, 0], [0, cols - 1]]), np.float32(points))
-    rastr1 = cv2.warpAffine(rastr, transform_matrix, (cols, rows))
-    c=np.zeros((rastr11.shape[0], rastr11.shape[1]))
-    c[np.logical_and((rastr1!=0), (rastr1!=1))]=1
-    # (np.logical_and((rastr11 != 0), (rastr11 != 1)), (rastr1 == 1)),
-    np.logical_or(np.logical_and(np.logical_and((rastr1!=0), (rastr1!=1)), (rastr11==1)), np.logical_and(np.logical_and((rastr11!=0), (rastr11!=1)), (rastr1==1)), out=c)
-    plt.imshow(c)
-    plt.show()
-    return c
-
-
 # def whater_difference(way, way1):
 #     center = get_centeres(way)
 #     center1 = get_centeres(way1)
@@ -351,17 +325,43 @@ def whater_difference(way, way1):
 #     for i in range(3):
 #         points.append([closer_value_search(cords['lat'], corns1[i][0] + (center['lat'] - center1['lat'])),
 #                        closer_value_search(cords['lon'], corns1[i][1] + (center['lon'] - center1['lon']))])
-#     print(cords)
-#     print(corns1)
-#     print(points)
-#     rastr = gdal.Open(get_ways_sentinel(way)['B08']).ReadAsArray()
-#     rastr11 = gdal.Open(get_ways_sentinel(way1)['B08']).ReadAsArray()
+#     rastr = sentinel_mndwi(way)
+#     rastr11 = sentinel_mndwi(way1)
 #     rows, cols = rastr.shape[:2]
 #     transform_matrix = cv2.getAffineTransform(np.float32([[0, 0], [rows - 1, 0], [0, cols - 1]]), np.float32(points))
 #     rastr1 = cv2.warpAffine(rastr, transform_matrix, (cols, rows))
-#     c = np.dstack([normalize(rastr11), normalize(rastr1), normalize(rastr1)])
+#     c=np.zeros((rastr11.shape[0], rastr11.shape[1]))
+#     c[np.logical_and((rastr1!=0), (rastr1!=1))]=1
+#     # (np.logical_and((rastr11 != 0), (rastr11 != 1)), (rastr1 == 1)),
+#     np.logical_or(np.logical_and(np.logical_and((rastr1!=0), (rastr1!=1)), (rastr11==1)), np.logical_and(np.logical_and((rastr11!=0), (rastr11!=1)), (rastr1==1)), out=c)
 #     plt.imshow(c)
 #     plt.show()
+#     return c
+
+
+def whater_difference(way, way1):
+    center = get_centeres(way)
+    center1 = get_centeres(way1)
+    cords = sentinel_coordinates(way)
+    if center==center1:
+        corns1 = sentinel_corner_coordinates(cords)
+    else:
+        corns1=sentinel_corner_coordinates1(way)
+    points = []
+    for i in range(3):
+        points.append([closer_value_search(cords['lat'], corns1[i][0] + (center['lat'] - center1['lat'])),
+                       closer_value_search(cords['lon'], corns1[i][1] + (center['lon'] - center1['lon']))])
+    print(cords)
+    print(corns1)
+    print(points)
+    rastr = gdal.Open(get_ways_sentinel(way)['B08']).ReadAsArray()
+    rastr11 = gdal.Open(get_ways_sentinel(way1)['B08']).ReadAsArray()
+    rows, cols = rastr.shape[:2]
+    transform_matrix = cv2.getAffineTransform(np.float32([[0, 0], [rows - 1, 0], [0, cols - 1]]), np.float32(points))
+    rastr1 = cv2.warpAffine(rastr, transform_matrix, (cols, rows))
+    c = np.dstack([normalize(rastr11), normalize(rastr1), normalize(rastr1)])
+    plt.imshow(c)
+    plt.show()
 
 
 # Блок дроче-Функций
@@ -734,8 +734,20 @@ def f(x_1, y_1, x_2, y_2, coord1, coord2):
     return np.argmin(np.abs(x_2 - np.full(x_2.shape, x_1[coord1]))), np.argmin(
         np.abs(y_2 - np.full(y_2.shape, y_1[coord2])))
 
-
+def sentinel_mndwi_for_same_shots_with_connection(way1, way2):
+    ass1=gdal.Open(way1).ReadAsArray()
+    ass2=gdal.Open(way2).ReadAsArray()
+    mndwi_sentinel1 = (ass1[2] - ass1[11]) / (ass1[2] + ass1[11])
+    mndwi_sentinel2 = (ass2[2] - ass2[11]) / (ass2[2] + ass2[11])
+    mndwi_sentinel=np.hstack([mndwi_sentinel1, mndwi_sentinel2])
+    mndwi_sentinel[mndwi_sentinel<0]=0
+    mndwi_sentinel[mndwi_sentinel>0]=1
+    mndwi_sentinel[np.logical_and((mndwi_sentinel!=0), (mndwi_sentinel!=1))]=0
+    # plt.imshow(mndwi_sentinel)
+    # plt.show()
+    return mndwi_sentinel
 def main():
+    default_save_way="C:/Users/perminov_u/Desktop/"
     ways = {"mod14": "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD14.hdf",
             "mod3": "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD03.hdf",
             "mod2": "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD021KM.hdf",
@@ -764,8 +776,23 @@ def main():
         'hach_ozero':"C:/Users/perminov_u/Downloads/S2B_MSIL2A_20221025T055919_N0400_R091_T43TDM_20221025T072143.SAFE",
         'hach_ozero1':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230314T055639_N0509_R091_T43TDM_20230314T074739.SAFE",
         'gay_ozero':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230218T075959_N0509_R035_T36NWF_20230220T131038.SAFE",
-        'gay_ozero2':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20221031T080009_N0400_R035_T36NWF_20221031T094754.SAFE"}
-    default_save_way="C:/Users/perminov_u/Desktop/"
+        'gay_ozero2':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20221031T080009_N0400_R035_T36NWF_20221031T094754.SAFE",
+        'dunai22_1':"C:/Users/perminov_u/Downloads/Telegram Desktop/2022_dunai-0000000000-0000000000.tif",
+        'dunai22_2':"C:/Users/perminov_u/Downloads\Telegram Desktop/2022_dunai-0000000000-0000005888.tif",
+        'dunai21_1':"C:/Users/perminov_u/Downloads/Telegram Desktop/2021_dunai-0000000000-0000000000.tif",
+        'dunai21_2':"C:/Users/perminov_u/Downloads/Telegram Desktop/2021_dunai-0000000000-0000005888.tif"}
+    dun21=sentinel_mndwi_for_same_shots_with_connection(yuras_ways['dunai21_1'], yuras_ways['dunai21_2'])
+    dun22=sentinel_mndwi_for_same_shots_with_connection(yuras_ways['dunai22_1'], yuras_ways['dunai22_2'])
+    change=np.zeros((dun21.shape[0], dun21.shape[1]))
+    change[np.logical_and((dun21==1), (dun22==1))]=2
+    change[np.logical_and((dun21==1),(dun22==0))]=1
+    change[np.logical_and((dun21==0), (dun22==0))]=3
+    plt.imshow(change)
+    plt.show()
+    print(np.count_nonzero(change==1))
+    print(np.count_nonzero(change==2))
+    print(np.count_nonzero(change==3))
+    save_as_tiff(change, default_save_way, '17_otvet_Posledovateli_Duba')
     # print(ndvi(ways["mod3"], ways["mod2"],show=True))
     # way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
     # print(gdal.Info(gdal.Info(ways['mod2']+way)))
@@ -785,7 +812,8 @@ def main():
     # start = time()
     # sentinel_cloud(yuras_ways['sentinel_oral1'])
     # sentinel_cloud(yuras_ways["sentinel_Kyiv"])
-    save_as_tiff(whater_difference(yuras_ways['sentinel_oral1'], yuras_ways['sentinel_oral']),default_save_way, "sentinel_oral_ndvi")
+    # save_as_tiff(whater_difference(yuras_ways['sentinel_oral1'], yuras_ways['sentinel_oral']),default_save_way, "sentinel_oral_ndvi")
+    # whater_difference(yuras_ways['sentinel_oral'], yuras_ways['sentinel_oral1'])
     # cords = sentinel_coordinates(yuras_ways['sentinel_oral1'])
     # print(cords, cords1)
     # shot1 = sentinel_coordinates(yuras_ways['sentinel_oral1'])
