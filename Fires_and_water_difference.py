@@ -12,7 +12,7 @@ from osgeo import ogr
 # from osgeo import gdalconst
 # import h5py
 import os
-# import numpy as np
+import numpy as np
 import math
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
@@ -28,7 +28,7 @@ from PIL import Image
 
 def save_as_tiff(massive, way, name):
     Image.fromarray(massive).save(way+name+".tif")
-# получение координат для sentinel, гордость моего кота(юриного)
+# получение координат для sentinel, 
 def convert_to_deciminal_degree(degree):
     a = float(degree[0:degree.find('d')])
     b = float(degree[degree.find('d') + 1:degree.find('\'')])
@@ -37,7 +37,6 @@ def convert_to_deciminal_degree(degree):
 
 
 from pyproj import Proj, transform
-
 
 def sentinel_coordinates(way):
     import warnings
@@ -59,32 +58,7 @@ def sentinel_coordinates(way):
     return {'lat': sm[0], 'lon': sm[1]}
 
 
-# def sentinel_coordinates(way):
-#     sentinel_coordinates1(way)
-#     info = gdal.Info(get_ways_sentinel(way)['B08'])
-#     # print(info)
-#     Up_Left = info[
-#               info.find("(", info.find("(", info.find("Upper Left")) + 1):info.find("\n",
-#                                                                                     info.find("Upper Left"))].replace(
-#         '(', '').replace(')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
-#     Lower_Right = info[info.find("(", info.find("(", info.find("Lower Right")) + 1):info.find("\n", info.find(
-#         "Lower Right"))].replace('(', '').replace(')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
-#     coords = [convert_to_deciminal_degree(Up_Left[0]), convert_to_deciminal_degree(Up_Left[1]),
-#               convert_to_deciminal_degree(Lower_Right[0]), convert_to_deciminal_degree(Lower_Right[1])]
-#     resolution = 40
-#     loc_bbox = BBox(bbox=coords, crs=CRS.WGS84)
-#     loc_size = bbox_to_dimensions(loc_bbox, resolution=resolution)
-#     bb_utm = geo_utils.to_utm_bbox(loc_bbox)
-#     transf = bb_utm.get_transform_vector(resx=resolution, resy=resolution)
-#     pix_lat = np.array(np.arange(0, loc_size[1]))
-#     lats = np.array([pix_lat] * loc_size[0]).transpose()
-#     pix_lon = np.array(np.arange(0, loc_size[0]))
-#     lons = np.array([pix_lon] * loc_size[1])
-#     lon, lat = geo_utils.pixel_to_utm(lats, lons, transf)
-#     lon_degrees, lat_degrees = geo_utils.to_wgs84(lon, lat, bb_utm.crs)
-#     return {'lat': np.array(lat_degrees), 'lon': np.array(lon_degrees)}
 
-# воимя отца сына и святого дуба помоги этому коду заработаать
 
 
 # Блок функций для открытия снимков
@@ -125,12 +99,11 @@ def get_ways_sentinel(way):
     return ways_slov
 
 
-# этот кал надо переделать, он медленный и через eoreader
 def get_cordinates_sentinel(file, x, y):
     return [float(file[x][y].coords['x']), float(file[x][y].coords['y'])]
 
 
-# я хуй его знает для чего это надо
+# получение широты и долготы для 
 def LatLon_from_XY(ProductSceneGeoCoding, x, y):
     # From x,y position in satellite image (SAR), get the Latitude and Longitude
     geopos = ProductSceneGeoCoding.getGeoPos((x, y), None)
@@ -246,12 +219,7 @@ def sentinel_ndfsi(way):
     return ndfsi_sentinel
 
 
-# import sentinelhub
-
-
-# функция для облачков
-
-# разница водного игдекса, но при желании можно перековырять под другой
+# разница водного индекса, но при желании можно перековырять под другой
 def sentinel_corner_coordinates1(way):
     info = gdal.Info(get_ways_sentinel(way)['B08'])
     corners = ['Upper Left', 'Upper Right', 'Lower Left']
@@ -265,19 +233,8 @@ def sentinel_corner_coordinates1(way):
         corns_cords[i] = [convert_to_deciminal_degree(corns_cords[i][0]),
                           convert_to_deciminal_degree(corns_cords[i][1])]
     return corns_cords
+    
 def sentinel_corner_coordinates(cords):
-    # info = gdal.Info(get_ways_sentinel(way)['B08'])
-    # corners = ['Upper Left', 'Upper Right', 'Lower Left']
-    # corns_cords = []
-    # for i in corners:
-    #     temp = info[info.find("(", info.find("(", info.find(i)) + 1):info.find("\n", info.find(i))].replace('(',
-    #                                                                                                         '').replace(
-    #         ')', '').replace(' ', '').replace('E', '').replace('N', '').split(',')
-    #     corns_cords.append([temp[0], temp[1]])
-    # for i in range(3):
-    #     corns_cords[i] = [convert_to_deciminal_degree(corns_cords[i][0]),
-    #                       convert_to_deciminal_degree(corns_cords[i][1])]
-    # return corns_cords
     return [[cords['lat'][0], cords['lon'][0]], [cords['lat'][-1], cords['lon'][0]], [cords['lat'][0], cords['lon'][-1]]]
 
 
@@ -338,7 +295,7 @@ def closer_value_search(mas, value):
 #     plt.show()
 #     return c
 
-
+# расчет изменения водной поверхности 
 def whater_difference(way, way1):
     center = get_centeres(way)
     center1 = get_centeres(way1)
@@ -364,7 +321,7 @@ def whater_difference(way, way1):
     plt.show()
 
 
-# Блок дроче-Функций
+# поиск пожаров на снимказ
 def fire_landsat(way):
     channels = get_names_landsat(way)
     B7 = gdal.Open(channels["B7"]).ReadAsArray().astype('float32')
@@ -384,7 +341,7 @@ def fire_landsat(way):
     f13 = np.logical_and(f10, f11)
     np.logical_or(f3, f13, out=fire)
     fire_cords = np.where(fire == 1)
-    print('startToCum')
+    print('Начало работы алгоритма')
     start = time()
     for x1 in range(len(fire_cords[0])):
         x = fire_cords[0][x1] - 30
@@ -396,17 +353,7 @@ def fire_landsat(way):
         f = np.logical_and(
             np.logical_and((R75 > (R75 + max((srkv * 3), (0.8)))), (B7 > B7 + (max((srkvP7 * 3), 0.08)))), R76 > 1.6,
             out=fire)
-    print('CumToCum', (time() - start))
-    # for i in range(B5.shape[0]):
-    #     for j in range(B5.shape[1]):
-    #         if(((B7[i][j] / B5[i][j]) > 2.5) and (B7[i][j] - B5[i][j] > 0.3) and B7[i][j] > 0.5) and (((B7[i][j] / B5[i][j]) >  1.8) and (B7[i][j] - B5[i][j] > 0.17)):
-    #             count += 1
-    #             fire[i][j] = 1
-    #             continue
-    #         if(B6[i][j] > 0.8 and B1[i][j] < 0.2 and (B5[i][j] > 0.4 or B7[i][j] < 0.1)):
-    #             count += 1
-    #             fire[i][j] = 1
-    #         print(i,j)
+    print('Время работы', (time() - start))
     plt.imshow(fire)
     plt.show()
     return count
@@ -428,7 +375,7 @@ def get_pixel_coordinates(x, y, way):
     return lat, lon
 
 
-# Ещё одна дрочефункция
+# Получения вспомогательного значения
 def get_L(way, chanel):
     scales = get_support_data(chanel, way)
     sl = get_fileName(chanel, way)["22"]
@@ -449,7 +396,7 @@ def mass_cast(mas, width, long):
     return m
 
 
-# Это писал индус, для получения путей каналов модиса
+# Функция для получения путей каналов модиса
 def get_SubFileName(way, chanel):
     a = str(gdal.Info(way)).split('\n')
     name = ''
@@ -491,7 +438,7 @@ def get_reflectance_scales_and_offsets(way, chanel):
     return ref
 
 
-# просто вывод массива
+#Вывод массива
 def mas_output(mas):
     for i in range(mas.shape[0]):
         for j in range(mas.shape[1]):
@@ -499,13 +446,12 @@ def mas_output(mas):
         print()
 
 
-# Рудимент
 def normalize(input_band):
     min_a, max_a = input_band.min() * 1.0, input_band.max() * 1.0
     return ((input_band * 1.0 - min_a * 1.0) / (max_a * 1.0 - min_a))
 
 
-# это вроде тоже для модиса
+# Поучения растра от модиса
 def get_rastr(way):
     gdalData = gdal.Open(way)
     raster = gdalData.ReadAsArray()
@@ -513,8 +459,6 @@ def get_rastr(way):
     print(type(mas))
     return mas
 
-
-# я хз, зачем это нам
 def ndvi_g(red_way, nir_way, way=0, show=True):
     if way:
         r = gdal.Open(way)
@@ -530,11 +474,6 @@ def ndvi_g(red_way, nir_way, way=0, show=True):
         plt.imshow(np.dstack(ndvi_)[0])
         plt.show()
     return ndvi_
-
-
-# Имба, без этой функции все сломается
-def get_longitude_latitude():
-    print(1)
 
 
 # обрезка растра
@@ -572,7 +511,7 @@ def ndvi_mas(nir, red, show=True):
     return ndvi
 
 
-# Функция, которую кирилл искал, как сделать(вывод rgb)
+# Функция вывода rgb
 def show_as_png(way):
     mas = gdal.Open(way)
     green = mas.GetRasterBand(4).ReadAsArray()
@@ -583,12 +522,7 @@ def show_as_png(way):
     plt.show()
 
 
-# Кирилл это сделал для модиса, но даже там это не надо
-def open_file(way):
-    return SD(way, SDC.WRITE | SDC.CREATE | SDC.READ)
-
-
-# тоже для модиса, но полезно
+#Вспомогательная функция
 def get_fileName(chanel, way):
     name = get_SubFileName(way, chanel)
     BandsArray = gdal.Open(name).ReadAsArray()
@@ -627,7 +561,7 @@ def get_support_data(channel, way):
     return spisok
 
 
-# очередная дрочефункция, но подрочевее
+# Вывод пожарных пикселей
 def fire(file_name, channel=31):
     np.seterr(divide='ignore', invalid='ignore')
     h = 6.62607015 * 10 ** -34
@@ -727,7 +661,6 @@ def fire(file_name, channel=31):
     # print()
 
 
-import numpy as np
 
 
 def f(x_1, y_1, x_2, y_2, coord1, coord2):
@@ -835,4 +768,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # воимя отца сына и святого дуба помоги этому коду заработаать
