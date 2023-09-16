@@ -7,7 +7,7 @@ from osgeo import gdal_array
 from osgeo import gdalconst
 import h5py
 import numpy as np
-#arr = np.random.rand(10000)
+#arr = np.random.rand(10000)n
 
 def get_rastr(way):
     gdalData = gdal.Open(way)
