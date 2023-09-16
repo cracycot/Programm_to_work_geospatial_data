@@ -15,6 +15,8 @@ from shapely.geometry import Polygon
 from shapely.geometry import Point
 #from shapely.plotting import plot_polygon, plot_points
 
+
+
 def get_lat_lon(way):
     return [SD(way).select('Latitude')[:],SD(way).select('Longitude')[:]]
 
@@ -87,20 +89,24 @@ def get_reflectance_scales_and_offsets(way,chanel):
     ref["reflectance_scales"] = [float(x) for x in ref_scales]
     ref["reflectance_offsets"] = [float(x) for x in ref_offset]
     return ref
+    
 def mas_output(mas):
     for i in range(mas.shape[0]):
         for j in range(mas.shape[1]):
             print(mas[i][j], end=' ')
         print()
+        
 def normalize(input_band):
     min_a , max_a = input_band.min()*1.0 ,input_band.max()*1.0
     return ((input_band*1.0 - min_a*1.0)/(max_a*1.0 - min_a))
+    
 def get_rastr(way):
     gdalData = gdal.Open(way)
     raster = gdalData.ReadAsArray()
     mas = np.array(raster)
     print(type(mas))
     return mas
+    
 def ndvi(red_way, nir_way,way = 0, show=True):
     if way:
         r = gdal.Open(way)
@@ -116,8 +122,7 @@ def ndvi(red_way, nir_way,way = 0, show=True):
         plt.imshow(np.dstack(ndvi_)[0])
         plt.show()
     return ndvi_
-def get_longitude_latitude():
-    print(1)
+    
 def check_borders(longitude, latitude, level=4, region_name = "Krasnodar"):
     shape = ogr.Open(f"/Users/kirilllesniak/Downloads/Адм_территориальные_границы_РФ_в_формате_SHP/admin_level_{level}.shp")
     indexedLayer = shape.GetLayerByIndex(0)
@@ -299,7 +304,7 @@ def main():
 
     yuras_ways={'mod021':"C:/Users/perminov_u/Desktop/MODIS shots/20220406_091200_TERRA_MOD021KM.hdf"}
 
-    #поставь вместо моего пути свой и помолись дубу
+    #поставьте вместо моего пути свой 
     print(get_pixel_coordinates(345, 543, yuras_ways['mod021']))
     #print(ndvi(ways["mod3"], ways["mod2"],show=True))
     #print(gdal.Info(gdal.Info(ways['mod2']+way)))
@@ -308,4 +313,3 @@ def main():
     #gdalData = gdal.Open(ways["mod2"])
 if __name__ == '__main__':
     main()
-    #воимя отца сына и святого дуба помогии этому коду заработаать
