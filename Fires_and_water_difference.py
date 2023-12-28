@@ -1,27 +1,14 @@
-# import numpy
-# from pyhdf import HDF
+
 from pyhdf.SD import SD, SDC
 from osgeo import gdal
 from osgeo import ogr
-# from glob import glob
-# import geopandas as gpd
-# import xarray as xr
-# import rioxarray as rxr
-# from osgeo import osr
-# from osgeo import gdal_array
-# from osgeo import gdalconst
-# import h5py
 import os
 import numpy as np
 import math
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
 from shapely.geometry import Point
-# from eoreader.reader import Reader
-# from eoreader.bands import *
-# import rasterio
 from time import time
-# from sentinelhub import geo_utils, BBox, bbox_to_dimensions, CRS
 import xarray
 import cv2
 from PIL import Image
@@ -270,32 +257,8 @@ def closer_value_search(mas, value):
     anw += np.where(tmp == tmp.min())[0][0]
     return anw * coef
 
-# def whater_difference(way, way1):
-#     center = get_centeres(way)
-#     center1 = get_centeres(way1)
-#     cords = sentinel_coordinates(way)
-#     if center==center1:
-#         corns1 = sentinel_corner_coordinates(cords)
-#     else:
-#         corns1=sentinel_corner_coordinates1(way)
-#     points = []
-#     for i in range(3):
-#         points.append([closer_value_search(cords['lat'], corns1[i][0] + (center['lat'] - center1['lat'])),
-#                        closer_value_search(cords['lon'], corns1[i][1] + (center['lon'] - center1['lon']))])
-#     rastr = sentinel_mndwi(way)
-#     rastr11 = sentinel_mndwi(way1)
-#     rows, cols = rastr.shape[:2]
-#     transform_matrix = cv2.getAffineTransform(np.float32([[0, 0], [rows - 1, 0], [0, cols - 1]]), np.float32(points))
-#     rastr1 = cv2.warpAffine(rastr, transform_matrix, (cols, rows))
-#     c=np.zeros((rastr11.shape[0], rastr11.shape[1]))
-#     c[np.logical_and((rastr1!=0), (rastr1!=1))]=1
-#     # (np.logical_and((rastr11 != 0), (rastr11 != 1)), (rastr1 == 1)),
-#     np.logical_or(np.logical_and(np.logical_and((rastr1!=0), (rastr1!=1)), (rastr11==1)), np.logical_and(np.logical_and((rastr11!=0), (rastr11!=1)), (rastr1==1)), out=c)
-#     plt.imshow(c)
-#     plt.show()
-#     return c
 
-# расчет изменения водной поверхности 
+# расчет изменения водной поверхности и получения результата в формате TIFF файла
 def whater_difference(way, way1):
     center = get_centeres(way)
     center1 = get_centeres(way1)
@@ -321,7 +284,7 @@ def whater_difference(way, way1):
     plt.show()
 
 
-# поиск пожаров на снимказ
+# Поиск потенциальных пикселей, в которых предполагается возгарание
 def fire_landsat(way):
     channels = get_names_landsat(way)
     B7 = gdal.Open(channels["B7"]).ReadAsArray().astype('float32')
@@ -359,7 +322,7 @@ def fire_landsat(way):
     return count
 
 
-# Координаты модиса
+# получение координат из hdf файла с сенсора MODIS
 def get_lat_lon(way):
     return [SD(way).select('Latitude')[:], SD(way).select('Longitude')[:]]
 
@@ -396,7 +359,7 @@ def mass_cast(mas, width, long):
     return m
 
 
-# Функция для получения путей каналов модиса
+# Функция для получения путей до конкретных спектральных каналов модиса
 def get_SubFileName(way, chanel):
     a = str(gdal.Info(way)).split('\n')
     name = ''
@@ -405,7 +368,7 @@ def get_SubFileName(way, chanel):
             name = a[i]
     return name[name.find('=') + 1:]
 
-
+# Получение значений угла падения солнечных лучей и растояния спуитника от солнца (для более корректного расчета индексов)
 def get_ESUN_and_distance_sun(way):
     Info_way = gdal.Info(way).split("\n")
     Esun = ''
@@ -422,7 +385,7 @@ def get_ESUN_and_distance_sun(way):
     Esun_and_distance["distance_to_sun"] = dis
     return Esun_and_distance
 
-
+# получение вспомогательных значений для использовании в формуле Планка
 def get_reflectance_scales_and_offsets(way, chanel):
     mAss = gdal.Info(get_SubFileName(way, chanel)).split('\n')
     ref_scales = ""
@@ -445,20 +408,21 @@ def mas_output(mas):
             print(mas[i][j], end=' ')
         print()
 
-
+#нормализация до значений пикселей от 0.0 до 1.0
 def normalize(input_band):
     min_a, max_a = input_band.min() * 1.0, input_band.max() * 1.0
     return ((input_band * 1.0 - min_a * 1.0) / (max_a * 1.0 - min_a))
 
 
-# Поучения растра от модиса
+# Поучения растра системы MODIS
 def get_rastr(way):
     gdalData = gdal.Open(way)
     raster = gdalData.ReadAsArray()
     mas = np.array(raster)
     print(type(mas))
     return mas
-
+    
+#Расчет индекса ndvi
 def ndvi_g(red_way, nir_way, way=0, show=True):
     if way:
         r = gdal.Open(way)
@@ -499,16 +463,6 @@ def check_borders(longitude, latitude, level=4, region_name="Krasnodar"):
     return polygon.contains(point)
 
 
-# ещё один ndvi
-def ndvi_mas(nir, red, show=True):
-    np.seterr(divide='ignore', invalid='ignore')
-    print(nir[1][3] - red[1][3], nir[1][3] + red[1][3])
-    ndvi = (nir - red) / (nir + red)
-    if show:
-        plt.imshow(ndvi)
-        plt.text(0.0, 0.0, "maxNdvi:   " + str(ndvi.max()))
-        plt.show()
-    return ndvi
 
 
 # Функция вывода rgb
@@ -522,7 +476,7 @@ def show_as_png(way):
     plt.show()
 
 
-#Вспомогательная функция
+#Вспомогательная функция для нахождения пути до файла
 def get_fileName(chanel, way):
     name = get_SubFileName(way, chanel)
     BandsArray = gdal.Open(name).ReadAsArray()
@@ -657,8 +611,6 @@ def fire(file_name, channel=31):
     # ширина и долгота записаны в отдельном файле и имееют привизку к каждому пятому пикселю
     # rastr[i][j] = lenght_wave/math.cos(math.pi*SolarZenith[i][j]/180)
     # 859nm / cos(3.14*solarZenith/180) выравнивание значений
-    # print(rastr[i][j], end=" ")
-    # print()
 
 
 
@@ -667,6 +619,8 @@ def f(x_1, y_1, x_2, y_2, coord1, coord2):
     return np.argmin(np.abs(x_2 - np.full(x_2.shape, x_1[coord1]))), np.argmin(
         np.abs(y_2 - np.full(y_2.shape, y_1[coord2])))
 
+
+#рассчет индекса mndwi для рассчета изменения водной поверхности
 def sentinel_mndwi_for_same_shots_with_connection(way1, way2):
     ass1=gdal.Open(way1).ReadAsArray()
     ass2=gdal.Open(way2).ReadAsArray()
@@ -680,90 +634,31 @@ def sentinel_mndwi_for_same_shots_with_connection(way1, way2):
     # plt.show()
     return mndwi_sentinel
 def main():
-    default_save_way="C:/Users/perminov_u/Desktop/"
-    ways = {"mod14": "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD14.hdf",
-            "mod3": "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD03.hdf",
-            "mod2": "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD021KM.hdf",
-            "mod2_1km": "HDF4_EOS:EOS_SWATH:/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD021KM.hdf:MODIS_SWATH_Type_L1B:EV_1KM_RefSB_Uncert_Indexes",
-            # "mod021_1km" :"HDF4_EOS:EOS_SWATH:/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD021KM.hdf:MODIS_SWATH_Type_L1B:EV_1KM_Emissive",
-            "mod03": "/Users/kirilllesniak/Downloads/20210314_113600_AQUA_MOD03.hdf",
-            "mod021_astrahan": "/Users/kirilllesniak/Downloads/hdf-sort/1/20220310_092621_TERRA_MOD021KM.hdf",
-            "mod021_kaliningrad": "/Users/kirilllesniak/Downloads/hdf-sort/1/20220310_092621_TERRA_MOD021KM.hdf",
-            "landsat_astr": "/Users/kirilllesniak/Downloads/LC09_L2SP_168028_20220321_20220323_02_T1",
-            "landsat_4": "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B4.TIF",
-            "landsat_5": "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B5.TIF",
-            "landsat_red": "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B4.TIF",
-            "landsat_green": "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B3.TIF",
-            "landsat_blue": "/Users/kirilllesniak/Downloads/Landsat 8 2017/LC08_L2SP_119016_20170815_20200903_02_T1_SR_B2.TIF", }
-    yuras_ways = {
-        'land_astrahan': "C:/Users/perminov_u/Downloads/Telegram Desktop/LC09_L2SP_168028_20220321_20220323_02_T1",
-        'sentinelZip': "C:/Users/perminov_u/Downloads/Telegram Desktop/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447_SAFE.zip",
-        'sentinel': "C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230211T044929_N0509_R076_T44QRJ_20230211T064447.SAFE",
-        'anotherSentinel': "C:/Users/perminov_u/Downloads/S2A_MSIL1C_20230218T085021_N0509_R107_T37VDG_20230218T093702.SAFE",
-        'sentinel_spb': "C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230301T090819_N0509_R050_T35UQS_20230301T094840.SAFE",
-        'sentinel_spb_1': "C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230225T093039_N0509_R136_T35VPG_20230225T100846.SAFE",
-        'sentinel_Kyiv': "C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230301T090819_N0509_R050_T36UUB_20230301T094840.SAFE",
-        'sentinel_Kyiv_1': "C:/Users/perminov_u/Downloads/Новая папка/S2B_MSIL1C_20230225T093039_N0509_R136_T36VUM_20230225T100846.SAFE",
-        'sentinel_oral': "C:/Users/perminov_u/Downloads/S2A_MSIL2A_20220401T065621_N0400_R063_T40TGS_20220401T095213.SAFE",
-        'sentinel_oral1': "C:/Users/perminov_u/Downloads/S2A_MSIL2A_20221018T065901_N0400_R063_T41TLM_20221018T102202.SAFE",
-        'hach_ozero':"C:/Users/perminov_u/Downloads/S2B_MSIL2A_20221025T055919_N0400_R091_T43TDM_20221025T072143.SAFE",
-        'hach_ozero1':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230314T055639_N0509_R091_T43TDM_20230314T074739.SAFE",
-        'gay_ozero':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20230218T075959_N0509_R035_T36NWF_20230220T131038.SAFE",
-        'gay_ozero2':"C:/Users/perminov_u/Downloads/S2B_MSIL1C_20221031T080009_N0400_R035_T36NWF_20221031T094754.SAFE",
-        'dunai22_1':"C:/Users/perminov_u/Downloads/Telegram Desktop/2022_dunai-0000000000-0000000000.tif",
-        'dunai22_2':"C:/Users/perminov_u/Downloads\Telegram Desktop/2022_dunai-0000000000-0000005888.tif",
-        'dunai21_1':"C:/Users/perminov_u/Downloads/Telegram Desktop/2021_dunai-0000000000-0000000000.tif",
-        'dunai21_2':"C:/Users/perminov_u/Downloads/Telegram Desktop/2021_dunai-0000000000-0000005888.tif"}
-    dun21=sentinel_mndwi_for_same_shots_with_connection(yuras_ways['dunai21_1'], yuras_ways['dunai21_2'])
-    dun22=sentinel_mndwi_for_same_shots_with_connection(yuras_ways['dunai22_1'], yuras_ways['dunai22_2'])
+
+    #пример рассчета изменения водной поверхности на двух снимках разной даты
+
+    #замените ваши пути
+    default_save_way="your_way_to_save"
+    
+    ways = {"way1" : "your_way_first", 
+           "way2" : "your_way_second"}
+    
+    dun21=sentinel_mndwi_for_same_shots_with_connection(ways['way1'], ways['way2'])
+    
     change=np.zeros((dun21.shape[0], dun21.shape[1]))
+    
     change[np.logical_and((dun21==1), (dun22==1))]=2
     change[np.logical_and((dun21==1),(dun22==0))]=1
     change[np.logical_and((dun21==0), (dun22==0))]=3
+    
     plt.imshow(change)
     plt.show()
+    
     print(np.count_nonzero(change==1))
     print(np.count_nonzero(change==2))
     print(np.count_nonzero(change==3))
-    save_as_tiff(change, default_save_way, '17_otvet_Posledovateli_Duba')
-    # print(ndvi(ways["mod3"], ways["mod2"],show=True))
-    # way = "/MODIS_SWATH_Type_L1B/Geolocation Fields"
-    # print(gdal.Info(gdal.Info(ways['mod2']+way)))
-    # fire(ways["mod021_kaliningrad"])
-    # fire_landsat(yuras_ways['land_astrahan'])
-    # print(sentinel_ndsi(yuras_ways['sentinel']))
-    # print(sentinel_mndwi(yuras_ways['sentinel']))
-    # whater_difference(yuras_ways['sentinel'], yuras_ways['anotherSentinel'])
-    # sentinel_mndwi(yuras_ways['sentinel_oral'])
-    # a=f(get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral'])['B03']))['x'],get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral'])['B03']))['y'],get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral1'])['B03']))['x'],get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral1'])['B03']))['y'],sentinel_mndwi(yuras_ways['sentinel_oral']), sentinel_mndwi(yuras_ways['sentinel_oral1']))
-    # print(a)
-    # sentinel_ndgr(yuras_ways['sentinel_spb'])
-    # a=get_coords_list(open_clean_band(yuras_ways['land_astrahan']))['x']
-    # a1=get_coords_list(open_clean_band(get_ways_sentinel(yuras_ways['sentinel_oral'])['B08']))['x']
-    # print(a)
-    # print(a1)
-    # start = time()
-    # sentinel_cloud(yuras_ways['sentinel_oral1'])
-    # sentinel_cloud(yuras_ways["sentinel_Kyiv"])
-    # save_as_tiff(whater_difference(yuras_ways['sentinel_oral1'], yuras_ways['sentinel_oral']),default_save_way, "sentinel_oral_ndvi")
-    # whater_difference(yuras_ways['sentinel_oral'], yuras_ways['sentinel_oral1'])
-    # cords = sentinel_coordinates(yuras_ways['sentinel_oral1'])
-    # print(cords, cords1)
-    # shot1 = sentinel_coordinates(yuras_ways['sentinel_oral1'])
-    # shot2 = sentinel_coordinates(yuras_ways['sentinel_oral'])
-    # print(f(shot1['lat'][0],shot1['lon'][0], shot2['lat'][0], shot2['lon'][0], 46.88962509, 59.56566092))
-    # print(shot2['lat'])
-    # print(shot2['lon'])
-    # print(shot1['lat'])
-    # print(shot1['lon'])
-
-    # sentinel_cloud(yuras_ways['sentinel_oral1'])
-    # sentinel_mndwi(yuras_ways['sentinel_oral'])
-    # sentinel_mndwi(yuras_ways['sentinel_oral1'])
-    # print(np.max(np.array(get_names_sentinel(yuras_ways['sentinel'], 'GREEN'))))
-    # print(fire_landsat(yuras_ways['land_astrahan']))
-    # get_L(ways['mod2'], 'EV_1KM_Emissive')
-    # gdalData = gdal.Open(ways["mod2"])
+    
+    save_as_tiff(change, default_save_way, 'Answer_filename')
 
 
 if __name__ == '__main__':
