@@ -5,4 +5,7 @@
 по профилю Анализ космических снимков и геопространственных данных, а также решение общих задач, связанных с обработкой космичечких снимков.
 
 ## Примеры работы программы
-![Water_difference_dunai_2020-2021.jpg](images%2FWater_difference_dunai_2020-2021.jpg)
+
+-<image src="/Water_difference_dunai_2020-2021.jpg" alt="Текст с описанием картинки">
+
+-![Water_difference_dunai_2020-2021.jpg](images%2FWater_difference_dunai_2020-2021.jpg)
